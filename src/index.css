@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #5B5CF0;
+  --color-secondary: #7B61FF;
+  --color-accent: #00D4FF;
+  --color-background: #FAFBFF;
+  
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --shadow-premium: 0 20px 40px -15px rgba(91, 92, 240, 0.15);
+}
+
+@layer utilities {
+  .glass-card {
+    background-color: rgb(255 255 255 / 0.7);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgb(255 255 255 / 0.5);
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-panel {
+    background-color: rgb(255 255 255 / 0.8);
+    backdrop-filter: blur(40px);
+    box-shadow: var(--shadow-premium);
+    border: 1px solid rgb(255 255 255 / 0.6);
+  }
+  .role-card-active {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-premium), 0 0 0 2px rgb(91 92 240 / 0.2);
+    background-color: rgb(91 92 240 / 0.05);
+  }
+  .role-card-inactive {
+    border-color: #f3f4f6;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+  .role-card-inactive:hover {
+    border-color: rgb(91 92 240 / 0.3);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+}
+
+body {
+  background-color: var(--color-background);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgb(91 92 240 / 0.2);
+  color: var(--color-primary);
+}
