@@ -56,11 +56,7 @@ export default function PatientDashboard() {
     { name: 'Book Appointment', icon: Calendar, id: 'Book Appointment' },
     { name: 'Live Queue', icon: Users, id: 'Live Queue' },
     { name: 'My Appointments', icon: Calendar, id: 'My Appointments' },
-    { name: 'My Reports', icon: FileText, id: 'My Reports' },
-    { name: 'Medicine Status', icon: Pill, id: 'Medicine Status' },
-    { name: 'Payments', icon: CreditCard, id: 'Payments' },
     { name: 'Profile', icon: User, id: 'Profile' },
-    { name: 'Help & Support', icon: HelpCircle, id: 'Help & Support' },
   ];
 
   const containerVariants = {
