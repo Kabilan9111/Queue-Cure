@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, CheckCircle2, XCircle, Activity } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Activity, BrainCircuit } from 'lucide-react';
 
 export default function QueueManagementView({ showToast }) {
   const [pendingAppointments, setPendingAppointments] = useState([]);
@@ -12,7 +12,6 @@ export default function QueueManagementView({ showToast }) {
       setPendingAppointments(pending);
     };
     fetchAppointments();
-    // In a real app we might poll or listen to events, but we'll fetch on mount for now.
   }, []);
 
   const handleApprove = (appointment) => {
@@ -20,20 +19,29 @@ export default function QueueManagementView({ showToast }) {
     const index = allAppointments.findIndex(app => app.id === appointment.id);
     
     if (index !== -1) {
-      // Generate Token, Room, Queue Position
-      const token = `#${String(Math.floor(Math.random() * 900) + 100)}`; // E.g., #482
+      // Generate Sequential Token
+      const approvedCount = allAppointments.filter(a => a.status === 'APPROVED' || a.status === 'COMPLETED').length;
+      const token = `P-${String(approvedCount + 1).padStart(3, '0')}`; // E.g., P-001
+      
       const room = `Room ${Math.floor(Math.random() * 10) + 1}`; // E.g., Room 4
       
-      // Calculate a mock queue position based on existing approved appointments for that doctor
-      const doctorLoad = allAppointments.filter(a => a.doctorId === appointment.doctorId && a.status === 'APPROVED').length;
-      const queuePosition = doctorLoad + 1;
+      // Calculate queue position based on AI priorityScore
+      const existingApproved = allAppointments.filter(a => a.status === 'APPROVED');
+      const sortedByAI = [...existingApproved, appointment].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+      
+      // We will assign queue positions strictly based on this sorted order
+      sortedByAI.forEach((app, i) => {
+        const appIndex = allAppointments.findIndex(a => a.id === app.id);
+        if (appIndex !== -1) {
+          allAppointments[appIndex].queuePosition = i + 1;
+        }
+      });
 
       allAppointments[index] = {
         ...allAppointments[index],
         status: 'APPROVED',
         token,
-        room,
-        queuePosition
+        room
       };
 
       localStorage.setItem('appointments', JSON.stringify(allAppointments));
@@ -54,6 +62,16 @@ export default function QueueManagementView({ showToast }) {
       
       setPendingAppointments(prev => prev.filter(app => app.id !== appointment.id));
       if (showToast) showToast(`Appointment Rejected.`, 'error');
+    }
+  };
+
+  const getSeverityStyle = (severity) => {
+    switch (severity) {
+      case 'Critical': return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', bar: 'bg-red-500' };
+      case 'High': return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', bar: 'bg-orange-500' };
+      case 'Medium': return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', bar: 'bg-blue-500' };
+      case 'Low': return { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', bar: 'bg-emerald-500' };
+      default: return { text: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100', bar: 'bg-slate-500' };
     }
   };
 
@@ -100,51 +118,74 @@ export default function QueueManagementView({ showToast }) {
                   <th className="py-4 pl-6 rounded-tl-xl">Patient Name</th>
                   <th className="py-4">Doctor</th>
                   <th className="py-4">Department</th>
-                  <th className="py-4">Date & Time</th>
-                  <th className="py-4">Symptoms</th>
+                  <th className="py-4 w-48">Symptoms</th>
+                  <th className="py-4">AI Score</th>
+                  <th className="py-4">Severity</th>
                   <th className="py-4">Status</th>
                   <th className="py-4 pr-6 rounded-tr-xl text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-[13px] font-bold text-slate-700">
-                {pendingAppointments.map((appt, i) => (
-                  <motion.tr variants={itemVariants} key={appt.id} className="border-b border-[#EEF2FF] hover:bg-[#FAFBFF] transition-colors">
-                    <td className="py-5 pl-6 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
-                    <td className="py-5">{appt.doctorName}</td>
-                    <td className="py-5 text-slate-500">{appt.department}</td>
-                    <td className="py-5">
-                      <p className="text-slate-800">{appt.appointmentDate}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{appt.slotTime}</p>
-                    </td>
-                    <td className="py-5 text-slate-500 font-medium max-w-[150px] truncate" title={appt.symptoms}>
-                      {appt.symptoms}
-                    </td>
-                    <td className="py-5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold text-orange-600 bg-orange-50 border border-orange-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                        {appt.status}
-                      </span>
-                    </td>
-                    <td className="py-5 pr-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => handleApprove(appt)}
-                          className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center border border-emerald-100 hover:border-emerald-500"
-                          title="Approve & Generate Token"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleReject(appt)}
-                          className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center border border-red-100 hover:border-red-500"
-                          title="Reject"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                {pendingAppointments.map((appt, i) => {
+                  const style = getSeverityStyle(appt.severity || 'Low');
+                  const score = appt.priorityScore || 3.5;
+                  const scorePercent = (score / 10) * 100;
+
+                  return (
+                    <motion.tr variants={itemVariants} key={appt.id} className="border-b border-[#EEF2FF] hover:bg-[#FAFBFF] transition-colors">
+                      <td className="py-5 pl-6 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
+                      <td className="py-5">
+                        <p className="text-slate-800">{appt.doctorName}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{appt.appointmentDate}</p>
+                      </td>
+                      <td className="py-5 text-slate-500">{appt.department}</td>
+                      <td className="py-5 text-slate-500 font-medium max-w-[200px] truncate" title={appt.symptoms}>
+                        {appt.symptoms}
+                      </td>
+                      <td className="py-5">
+                        <div className="flex flex-col gap-1.5 w-24">
+                          <span className={`text-[12px] font-black ${style.text}`}>{score.toFixed(1)} / 10</span>
+                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${scorePercent}%` }}
+                              transition={{ duration: 1, ease: "easeOut" }}
+                              className={`h-full ${style.bar}`} 
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold border ${style.text} ${style.bg} ${style.border}`}>
+                          {appt.severity || 'Low'}
+                        </span>
+                      </td>
+                      <td className="py-5">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold text-slate-500 bg-slate-50 border border-slate-200">
+                          {appt.status}
+                        </span>
+                      </td>
+                      <td className="py-5 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => handleApprove(appt)}
+                            className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center border border-emerald-100 hover:border-emerald-500"
+                            title="Approve & Generate Token"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleReject(appt)}
+                            className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center border border-red-100 hover:border-red-500"
+                            title="Reject"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

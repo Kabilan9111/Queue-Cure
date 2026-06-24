@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CheckCircle2, User, Stethoscope, Calendar } from 'lucide-react';
+import { calculatePriority } from '../utils/aiTriage';
 
 export default function BookAppointmentView({ setActiveTab, showToast }) {
   // State
@@ -48,6 +49,8 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
       return;
     }
 
+    const triage = calculatePriority(symptoms);
+
     const newAppt = {
       id: Date.now(),
       patientId: 1,
@@ -67,6 +70,9 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
       slotTime: selectedTime,
       status: 'Pending Approval',
       symptoms,
+      priorityScore: triage.priorityScore,
+      severity: triage.severity,
+      aiRecommendation: triage.aiRecommendation,
       createdAt: new Date().toISOString()
     };
     

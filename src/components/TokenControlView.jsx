@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity } from 'lucide-react';
+import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity, BrainCircuit } from 'lucide-react';
 
 export default function TokenControlView({ showToast }) {
   const [approvedTokens, setApprovedTokens] = useState([]);
@@ -33,7 +33,6 @@ export default function TokenControlView({ showToast }) {
   };
 
   const handleCallNext = (appt) => {
-    // In a real app, this might set a "Currently Serving" status or broadcast to a TV display
     showToast(`Calling Token ${appt.token}...`, 'success');
   };
 
@@ -53,6 +52,16 @@ export default function TokenControlView({ showToast }) {
     updateAppointment(appt.id, { status: 'COMPLETED' }, `Marked Token ${appt.token} as Completed`);
   };
 
+  const getSeverityStyle = (severity) => {
+    switch (severity) {
+      case 'Critical': return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', bar: 'bg-red-500' };
+      case 'High': return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', bar: 'bg-orange-500' };
+      case 'Medium': return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', bar: 'bg-blue-500' };
+      case 'Low': return { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', bar: 'bg-emerald-500' };
+      default: return { text: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100', bar: 'bg-slate-500' };
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -63,6 +72,9 @@ export default function TokenControlView({ showToast }) {
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
   };
 
+  // Determine highest priority patient for AI Card
+  const highestPriorityPatient = [...approvedTokens].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))[0];
+
   return (
     <motion.div 
       className="max-w-[1440px] mx-auto space-y-6 pb-20"
@@ -71,6 +83,54 @@ export default function TokenControlView({ showToast }) {
       animate="visible"
       exit="hidden"
     >
+      {highestPriorityPatient && (
+        <motion.div variants={itemVariants} className="bg-gradient-to-br from-[#FAFBFF] to-white rounded-[24px] p-8 border border-[#6C5CE7]/20 shadow-[0_10px_40px_rgba(108,92,231,0.06)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#6C5CE7]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+          
+          <div className="flex items-center gap-3 mb-6 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#6C5CE7] to-[#8B7CFF] text-white flex items-center justify-center shadow-md">
+              <BrainCircuit className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-[18px] font-black text-slate-800">AI Queue Recommendation</h2>
+              <p className="text-[12px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Smart Triage System</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
+            <div className="lg:col-span-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Patient</p>
+              <p className="text-[16px] font-extrabold text-slate-800">{highestPriorityPatient.patientName}</p>
+            </div>
+            <div className="lg:col-span-2">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Symptoms</p>
+              <p className="text-[14px] font-medium text-slate-700 leading-snug">{highestPriorityPatient.symptoms}</p>
+            </div>
+            <div className="lg:col-span-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">AI Score</p>
+              <div className="flex items-center gap-2">
+                <span className={`text-[16px] font-black ${getSeverityStyle(highestPriorityPatient.severity).text}`}>
+                  {highestPriorityPatient.priorityScore?.toFixed(1)} / 10
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${getSeverityStyle(highestPriorityPatient.severity).bg} ${getSeverityStyle(highestPriorityPatient.severity).text} ${getSeverityStyle(highestPriorityPatient.severity).border}`}>
+                  {highestPriorityPatient.severity}
+                </span>
+              </div>
+            </div>
+            <div className="lg:col-span-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Suggested Pos</p>
+              <p className="text-[16px] font-black text-[#6C5CE7]">Queue Position 1</p>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 rounded-xl bg-[#F4F4FF] border border-[#6C5CE7]/10 relative z-10">
+            <p className="text-[13px] font-bold text-slate-700">
+              <span className="text-[#6C5CE7]">Reason:</span> {highestPriorityPatient.aiRecommendation}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       <div className="bg-white rounded-[24px] p-8 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-[16px] bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100">
