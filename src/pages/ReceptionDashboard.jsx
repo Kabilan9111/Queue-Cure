@@ -66,8 +66,6 @@ export default function ReceptionDashboard() {
     { name: 'Queue Management', icon: Users },
     { name: 'Token Control', icon: UserCheck },
     { name: 'Doctors', icon: Stethoscope },
-    { name: 'Reports', icon: FileText },
-    { name: 'Help & Support', icon: HelpCircle },
   ];
 
   // Debounce AI Score
