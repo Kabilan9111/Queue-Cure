@@ -9,6 +9,7 @@ import aiRobot from '../assets/ai-robot.png';
 import heartBanner from '../assets/heart_banner.png';
 import userAvatar from '../assets/user_avatar.png';
 import robotHead from '../assets/robot_head.png';
+import BookAppointmentView from '../components/BookAppointmentView';
 
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -604,101 +605,7 @@ export default function PatientDashboard() {
 
             {/* ===================== BOOK APPOINTMENT TAB ===================== */}
             {activeTab === 'Book Appointment' && (
-              <motion.div 
-                key="book-appointment"
-                className="max-w-4xl mx-auto space-y-6 pb-20"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-              >
-                <div className="bg-white rounded-[24px] p-8 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-[16px] bg-[#F4F4FF] text-[#6C63FF] flex items-center justify-center border border-[#6C63FF]/10">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-[22px] font-extrabold text-slate-800">Book New Appointment</h2>
-                      <p className="text-[13px] text-slate-500 font-medium mt-0.5">Fill out the details below to schedule your visit.</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleBookAppointment} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      
-                      <div>
-                        <label className="block text-[12px] font-bold text-slate-700 mb-2">Select Doctor & Department</label>
-                        <div className="relative">
-                          <select 
-                            value={bookingForm.doctorId}
-                            onChange={(e) => setBookingForm({...bookingForm, doctorId: e.target.value})}
-                            className="w-full appearance-none bg-[#FAFBFF] border border-[#EEF2FF] rounded-[12px] px-4 py-3.5 text-[13px] font-bold text-slate-700 outline-none focus:border-[#6C63FF] focus:bg-white transition-all shadow-sm"
-                          >
-                            <option value="1">Dr. Priya Sharma - Dermatology</option>
-                            <option value="2">Dr. Arjun Kumar - Cardiology</option>
-                            <option value="3">Dr. Amit Verma - Orthopedics</option>
-                            <option value="4">Dr. Neha Gupta - Pediatrics</option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[12px] font-bold text-slate-700 mb-2">Appointment Date</label>
-                        <input 
-                          type="date" 
-                          required
-                          value={bookingForm.appointmentDate}
-                          onChange={(e) => setBookingForm({...bookingForm, appointmentDate: e.target.value})}
-                          className="w-full bg-[#FAFBFF] border border-[#EEF2FF] rounded-[12px] px-4 py-3 text-[13px] font-bold text-slate-700 outline-none focus:border-[#6C63FF] focus:bg-white transition-all shadow-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[12px] font-bold text-slate-700 mb-2">Preferred Time Slot</label>
-                        <div className="relative">
-                          <select 
-                            required
-                            value={bookingForm.slotTime}
-                            onChange={(e) => setBookingForm({...bookingForm, slotTime: e.target.value})}
-                            className="w-full appearance-none bg-[#FAFBFF] border border-[#EEF2FF] rounded-[12px] px-4 py-3.5 text-[13px] font-bold text-slate-700 outline-none focus:border-[#6C63FF] focus:bg-white transition-all shadow-sm"
-                          >
-                            <option value="">Select a time...</option>
-                            <option value="09:00 AM">09:00 AM</option>
-                            <option value="10:00 AM">10:00 AM</option>
-                            <option value="11:30 AM">11:30 AM</option>
-                            <option value="02:00 PM">02:00 PM</option>
-                            <option value="04:00 PM">04:00 PM</option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <div>
-                      <label className="block text-[12px] font-bold text-slate-700 mb-2">Briefly Describe Your Symptoms</label>
-                      <textarea 
-                        rows={4}
-                        required
-                        value={bookingForm.symptoms}
-                        onChange={(e) => setBookingForm({...bookingForm, symptoms: e.target.value})}
-                        placeholder="e.g., I have been experiencing skin redness and itching..."
-                        className="w-full bg-[#FAFBFF] border border-[#EEF2FF] rounded-[12px] p-4 text-[13px] font-medium text-slate-700 outline-none focus:border-[#6C63FF] focus:bg-white transition-all shadow-sm placeholder:text-slate-400"
-                      ></textarea>
-                    </div>
-
-                    <div className="pt-4 border-t border-[#EEF2FF] flex justify-end">
-                      <button 
-                        type="submit"
-                        className="bg-[#6C63FF] hover:bg-[#5a4cdb] text-white px-8 py-3.5 rounded-[16px] text-[14px] font-bold shadow-[0_4px_20px_rgba(108,99,255,0.25)] hover:shadow-[0_8px_25px_rgba(108,99,255,0.35)] transition-all hover:-translate-y-0.5 flex items-center gap-2"
-                      >
-                        <Send className="w-4 h-4" /> Request Appointment
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </motion.div>
+              <BookAppointmentView setActiveTab={setActiveTab} showToast={showToast} />
             )}
 
             {/* ===================== MY APPOINTMENTS TAB ===================== */}
