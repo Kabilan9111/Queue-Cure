@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Bell, LayoutDashboard, Users, UserCheck, Stethoscope, FileText, HelpCircle,
   Activity, ArrowRight, Clock, Star, Calendar, UserPlus, Sparkles, CheckCircle2,
-  SkipForward, Play, ChevronRight, Eye, MoreHorizontal
+  SkipForward, Play, ChevronRight, Eye, MoreHorizontal, AlertCircle
 } from 'lucide-react';
 import aiRobot from '../assets/ai-robot.png';
 import userAvatar from '../assets/user_avatar.png';
 import robotHead from '../assets/robot_head.png';
+
+// New Views
+import QueueManagementView from '../components/QueueManagementView';
+import TokenControlView from '../components/TokenControlView';
+import DoctorsView from '../components/DoctorsView';
 
 const initialPatients = [
   { id: 1, token: 'P-03', name: 'Ramesh Kumar', symptoms: 'Chest pain, breathlessness since 2hrs', doctor: 'Dr. Arjun', time: '9:00 AM', score: 9.2, status: 'In Progress' },
@@ -30,6 +35,14 @@ const doctorsList = [
 ];
 
 export default function ReceptionDashboard() {
+  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToastMessage({ msg, type });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const [patients, setPatients] = useState(initialPatients);
   const [notifications, setNotifications] = useState(initialNotifications);
   
@@ -49,7 +62,7 @@ export default function ReceptionDashboard() {
 
   // Nav Links
   const navLinks = [
-    { name: 'Dashboard', icon: LayoutDashboard, active: true },
+    { name: 'Dashboard', icon: LayoutDashboard },
     { name: 'Queue Management', icon: Users },
     { name: 'Token Control', icon: UserCheck },
     { name: 'Doctors', icon: Stethoscope },
@@ -126,6 +139,23 @@ export default function ReceptionDashboard() {
   return (
     <div className="min-h-screen bg-[#FAFBFF] flex font-sans text-slate-800 selection:bg-[#6C5CE7]/20 selection:text-[#6C5CE7]">
       
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-white border shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-4 flex items-center gap-3 ${toastMessage.type === 'error' ? 'border-red-100' : 'border-[#6C5CE7]/20'}`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toastMessage.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-[#6C5CE7]/10 text-[#6C5CE7]'}`}>
+              {toastMessage.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+            </div>
+            <p className="text-sm font-bold text-slate-800">{toastMessage.msg}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex flex-col w-[260px] bg-white border-r border-[#EEF2FF] fixed h-full z-20 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
         <div className="p-7 pb-4 flex items-center gap-3">
@@ -141,16 +171,18 @@ export default function ReceptionDashboard() {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1 no-scrollbar">
           {navLinks.map((link) => {
             const Icon = link.icon;
+            const isActive = activeTab === link.name;
             return (
               <button 
                 key={link.name}
+                onClick={() => setActiveTab(link.name)}
                 className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-[13px] font-semibold transition-all duration-300 ${
-                  link.active 
+                  isActive 
                     ? 'bg-gradient-to-r from-[#6C5CE7] to-[#8079FF] text-white shadow-[0_4px_20px_rgba(108,92,231,0.25)]' 
                     : 'text-slate-500 hover:bg-[#FAFBFF] hover:text-slate-800'
                 }`}
               >
-                <Icon className={`w-[18px] h-[18px] ${link.active ? 'text-white' : 'text-slate-400'}`} />
+                <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 {link.name}
               </button>
             )
@@ -210,12 +242,17 @@ export default function ReceptionDashboard() {
 
         {/* MAIN DASHBOARD SCROLL AREA */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-10 pt-4 no-scrollbar">
-          <motion.div 
-            className="flex flex-col xl:flex-row gap-6 lg:gap-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
+          <AnimatePresence mode="wait">
+            
+            {activeTab === 'Dashboard' && (
+              <motion.div 
+                key="dashboard"
+                className="flex flex-col xl:flex-row gap-6 lg:gap-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
             
             {/* LEFT & CENTER COLUMN (Flex-1) */}
             <div className="flex-1 space-y-6 lg:space-y-8">
@@ -513,6 +550,21 @@ export default function ReceptionDashboard() {
             </div>
 
           </motion.div>
+          )}
+
+          {activeTab === 'Queue Management' && (
+            <QueueManagementView key="queue-management" showToast={showToast} />
+          )}
+
+          {activeTab === 'Token Control' && (
+            <TokenControlView key="token-control" showToast={showToast} />
+          )}
+
+          {activeTab === 'Doctors' && (
+            <DoctorsView key="doctors" />
+          )}
+
+          </AnimatePresence>
         </main>
       </div>
     </div>
