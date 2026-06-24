@@ -14,6 +14,60 @@ import BookAppointmentView from '../components/BookAppointmentView';
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState('Home');
   const [toastMessage, setToastMessage] = useState(null);
+  const [liveQueueData, setLiveQueueData] = useState(null);
+
+  React.useEffect(() => {
+    const fetchLiveData = () => {
+      const allAppts = JSON.parse(localStorage.getItem('appointments') || '[]');
+      const myActiveAppt = allAppts.find(a => a.status !== 'Completed' && a.status !== 'Rejected' && a.status !== 'Cancelled');
+      
+      if (!myActiveAppt) {
+        setLiveQueueData(null);
+        return;
+      }
+
+      const doctorAppts = allAppts.filter(a => a.doctorName === myActiveAppt.doctorName);
+      const nowServingAppt = doctorAppts.find(a => a.status === 'IN_CONSULTATION');
+      const nowServingToken = nowServingAppt ? nowServingAppt.token : '--';
+      
+      const ahead = doctorAppts.filter(a => 
+        (a.status === 'APPROVED' || a.status === 'ASSIGNED_TO_DOCTOR') && 
+        a.id !== myActiveAppt.id
+      ).length;
+      
+      let priorityText = 'Low';
+      let priorityColor = 'text-emerald-500';
+      if (myActiveAppt.priorityScore >= 8) {
+        priorityText = 'High';
+        priorityColor = 'text-red-500';
+      } else if (myActiveAppt.priorityScore >= 5) {
+        priorityText = 'Medium';
+        priorityColor = 'text-orange-500';
+      }
+      
+      const waitTimeMins = ahead * 10;
+      const estTimeDate = new Date(Date.now() + waitTimeMins * 60000);
+      const estTimeStr = estTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setLiveQueueData({
+        doctorName: myActiveAppt.doctorName || 'Doctor',
+        department: myActiveAppt.department || 'Department',
+        room: 'Room 402',
+        yourToken: myActiveAppt.token || 'Pending',
+        nowServing: nowServingToken,
+        aheadOfYou: ahead,
+        waitTime: `${waitTimeMins}m`,
+        estTime: estTimeStr,
+        priority: priorityText,
+        priorityColor: priorityColor,
+        rawAppt: myActiveAppt // Store raw appointment for Home tab
+      });
+    };
+    
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
@@ -184,8 +238,8 @@ export default function PatientDashboard() {
             </div>
             {/* Priority Badge */}
             <div className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-[#6C63FF]/10 to-[#4F8CFF]/10 px-4 py-2.5 rounded-full border border-[#6C63FF]/20 shadow-sm ml-2">
-              <span className="text-[11px] font-bold text-[#6C63FF]">Priority: Medium</span>
-              <Star className="w-3.5 h-3.5 text-[#F5A623] fill-[#F5A623]" />
+              <span className={`text-[11px] font-bold ${liveQueueData?.priorityColor || 'text-[#6C63FF]'}`}>Priority: {liveQueueData?.priority || 'Low'}</span>
+              <Star className={`w-3.5 h-3.5 ${liveQueueData?.priority === 'High' ? 'text-red-500 fill-red-500' : liveQueueData?.priority === 'Medium' ? 'text-[#F5A623] fill-[#F5A623]' : 'text-emerald-500 fill-emerald-500'}`} />
             </div>
           </div>
         </header>
@@ -253,28 +307,28 @@ export default function PatientDashboard() {
                     <div className="flex items-center justify-between mb-6 bg-[#FAFBFF] rounded-[16px] p-4 border border-[#EEF2FF] group-hover:border-[#6C63FF]/30 transition-colors">
                       <div className="text-center">
                         <p className="text-[10px] text-slate-400 font-semibold mb-1">Your Token</p>
-                        <p className="text-3xl font-black text-[#6C63FF]">#23</p>
+                        <p className="text-3xl font-black text-[#6C63FF]">{liveQueueData?.yourToken || '--'}</p>
                       </div>
                       <div className="w-px h-10 bg-slate-200"></div>
                       <div className="text-center">
                         <p className="text-[10px] text-slate-400 font-semibold mb-1">Wait Time</p>
-                        <p className="text-[16px] font-bold text-slate-800 flex items-center justify-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400"/> 12m</p>
+                        <p className="text-[16px] font-bold text-slate-800 flex items-center justify-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400"/> {liveQueueData?.waitTime || '--'}</p>
                       </div>
                       <div className="w-px h-10 bg-slate-200"></div>
                       <div className="text-center">
                         <p className="text-[10px] text-slate-400 font-semibold mb-1">Ahead</p>
-                        <p className="text-[16px] font-bold text-slate-800 flex items-center justify-center gap-1.5"><Users className="w-3.5 h-3.5 text-slate-400"/> 8</p>
+                        <p className="text-[16px] font-bold text-slate-800 flex items-center justify-center gap-1.5"><Users className="w-3.5 h-3.5 text-slate-400"/> {liveQueueData?.aheadOfYou ?? '--'}</p>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[12px] font-bold text-slate-800">AI Priority Score</p>
-                        <p className="text-[12px] font-bold text-slate-800">72<span className="text-[10px] text-slate-400 font-semibold">/100</span></p>
+                        <p className="text-[12px] font-bold text-slate-800">{liveQueueData?.rawAppt?.priorityScore || '--'}<span className="text-[10px] text-slate-400 font-semibold">/100</span></p>
                       </div>
                       <div className="h-2.5 bg-[#EEF2FF] rounded-full mb-3 flex items-center justify-between relative pr-2">
-                        <div className="absolute left-0 top-0 h-full w-[72%] bg-gradient-to-r from-[#6C63FF] to-[#00D4FF] rounded-full"></div>
-                        <div className="absolute left-[70%] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-white bg-[#F4F4FF] shadow-sm flex items-center justify-center overflow-hidden z-10">
+                        <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#6C63FF] to-[#00D4FF] rounded-full transition-all duration-500" style={{ width: `${liveQueueData?.rawAppt?.priorityScore || 0}%` }}></div>
+                        <div className="absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-white bg-[#F4F4FF] shadow-sm flex items-center justify-center overflow-hidden z-10 transition-all duration-500" style={{ left: `calc(${liveQueueData?.rawAppt?.priorityScore || 0}% - 16px)` }}>
                           <img src={robotHead} alt="AI" className="w-6 h-6 object-cover" />
                         </div>
                       </div>
@@ -296,11 +350,17 @@ export default function PatientDashboard() {
                         </div>
                         <h3 className="text-[13px] font-extrabold text-slate-800">Next Appointment</h3>
                       </div>
-                      <p className="text-[14px] font-bold text-slate-800">Dr. Priya Sharma</p>
-                      <p className="text-[11px] font-bold text-[#6C63FF] mb-2">Dermatology</p>
-                      <p className="text-[11px] font-medium text-slate-500 flex items-center gap-2">
-                        24 June 2026 <span className="w-1 h-1 bg-slate-300 rounded-full"></span> 10:30 AM
-                      </p>
+                      {myAppointments[0] ? (
+                        <>
+                          <p className="text-[14px] font-bold text-slate-800">{myAppointments[0].doctorName}</p>
+                          <p className="text-[11px] font-bold text-[#6C63FF] mb-2">{myAppointments[0].department}</p>
+                          <p className="text-[11px] font-medium text-slate-500 flex items-center gap-2">
+                            {myAppointments[0].appointmentDate} <span className="w-1 h-1 bg-slate-300 rounded-full"></span> {myAppointments[0].slotTime}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-[13px] font-medium text-slate-500 mt-2">No upcoming appointments.</p>
+                      )}
                     </div>
                     <button onClick={() => setActiveTab('My Appointments')} className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-[#6C63FF] hover:bg-[#F4F4FF] transition-colors flex items-center justify-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
                       View Details <ArrowRight className="w-3.5 h-3.5" />
@@ -311,21 +371,20 @@ export default function PatientDashboard() {
                   <motion.div variants={itemVariants} className="bg-white rounded-[24px] p-6 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_40px_rgba(108,99,255,0.08)] transition-all flex flex-col justify-between h-[190px]">
                     <div>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-[42px] h-[42px] rounded-[14px] bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100">
+                        <div className="w-[42px] h-[42px] rounded-[14px] bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100">
                           <Pill className="w-5 h-5" />
                         </div>
                         <h3 className="text-[13px] font-extrabold text-slate-800">Medicine Status</h3>
                       </div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="text-[14px] font-bold text-slate-800">2 Medicines</p>
+                        <p className="text-[14px] font-bold text-slate-400">0 Medicines</p>
                       </div>
-                      <span className="inline-block mb-3 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-md border border-emerald-100 uppercase tracking-wider">Ready Soon</span>
-                      <p className="text-[11px] font-medium text-slate-500">
-                        Will be ready in 15 mins
+                      <p className="text-[11px] font-medium text-slate-400 mt-2">
+                        No active prescriptions
                       </p>
                     </div>
-                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-[#6C63FF] hover:bg-[#F4F4FF] transition-colors flex items-center justify-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                      View Details <ArrowRight className="w-3.5 h-3.5" />
+                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-slate-400 bg-slate-50 cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 shadow-none">
+                      No Action Needed
                     </button>
                   </motion.div>
 
@@ -333,21 +392,20 @@ export default function PatientDashboard() {
                   <motion.div variants={itemVariants} className="bg-white rounded-[24px] p-6 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_40px_rgba(108,99,255,0.08)] transition-all flex flex-col justify-between h-[190px]">
                     <div>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-[42px] h-[42px] rounded-[14px] bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100">
+                        <div className="w-[42px] h-[42px] rounded-[14px] bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100">
                           <FileText className="w-5 h-5" />
                         </div>
                         <h3 className="text-[13px] font-extrabold text-slate-800">Reports Available</h3>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <p className="text-[14px] font-bold text-slate-800">3 New Reports</p>
-                        <span className="bg-blue-100 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">New</span>
+                        <p className="text-[14px] font-bold text-slate-400">0 New Reports</p>
                       </div>
-                      <p className="text-[11px] font-medium text-slate-500">
-                        Blood Test, X-Ray, CBC
+                      <p className="text-[11px] font-medium text-slate-400">
+                        All clear for now
                       </p>
                     </div>
-                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-[#6C63FF] hover:bg-[#F4F4FF] transition-colors flex items-center justify-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                      View Reports <ArrowRight className="w-3.5 h-3.5" />
+                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-slate-400 bg-slate-50 cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 shadow-none">
+                      No Action Needed
                     </button>
                   </motion.div>
 
@@ -355,21 +413,21 @@ export default function PatientDashboard() {
                   <motion.div variants={itemVariants} className="bg-white rounded-[24px] p-6 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_40px_rgba(108,99,255,0.08)] transition-all flex flex-col justify-between h-[190px]">
                     <div>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-[42px] h-[42px] rounded-[14px] bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100">
+                        <div className="w-[42px] h-[42px] rounded-[14px] bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100">
                           <CreditCard className="w-5 h-5" />
                         </div>
                         <h3 className="text-[13px] font-extrabold text-slate-800">Pending Payments</h3>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <p className="text-[18px] font-black text-slate-800">₹1,250</p>
-                        <span className="bg-rose-100 text-rose-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Due</span>
+                        <p className="text-[18px] font-black text-emerald-600">₹0</p>
+                        <span className="bg-emerald-100 text-emerald-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Cleared</span>
                       </div>
                       <p className="text-[11px] font-medium text-slate-500">
-                        Bill from 20 June 2026
+                        No outstanding bills
                       </p>
                     </div>
-                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-[#6C63FF] hover:bg-[#F4F4FF] transition-colors flex items-center justify-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                      Make Payment <ArrowRight className="w-3.5 h-3.5" />
+                    <button className="w-full mt-auto py-2.5 rounded-xl border border-[#EEF2FF] text-[11px] font-bold text-emerald-600 bg-emerald-50 cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 shadow-none">
+                      All Settled <CheckCircle2 className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>
 
@@ -399,25 +457,39 @@ export default function PatientDashboard() {
                       <div className="relative z-10 flex justify-between">
                         {/* Step 1 */}
                         <div className="flex flex-col items-center text-center w-16">
-                          <div className="w-[44px] h-[44px] rounded-full bg-[#6C63FF] text-white flex items-center justify-center mb-3.5 font-bold text-[14px] border-[3px] border-white shadow-sm">
+                          <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center mb-3.5 font-bold text-[14px] border-[3px] shadow-sm ${liveQueueData?.rawAppt ? 'bg-[#6C63FF] text-white border-white' : 'bg-white text-slate-300 border-slate-200'}`}>
                             1
                           </div>
                           <p className="text-[12px] font-bold text-slate-800 mb-1">Reception</p>
-                          <p className="text-[10px] font-bold text-emerald-500 mb-1">Completed</p>
-                          <p className="text-[9px] font-medium text-slate-400 flex items-center justify-center gap-0.5">
-                            09:40 AM <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
-                          </p>
+                          {liveQueueData?.rawAppt ? (
+                            <p className="text-[10px] font-bold text-emerald-500 mb-1 flex items-center justify-center gap-0.5">
+                              Completed <CheckCircle2 className="w-2.5 h-2.5" />
+                            </p>
+                          ) : (
+                            <p className="text-[10px] font-bold text-slate-400">Pending</p>
+                          )}
                         </div>
 
                         {/* Step 2 */}
                         <div className="flex flex-col items-center text-center w-16">
-                          <div className="w-[44px] h-[44px] rounded-full bg-[#6C63FF] text-white flex items-center justify-center mb-3.5 font-bold text-[14px] border-[3px] border-white shadow-[0_0_15px_rgba(108,99,255,0.4)] relative">
-                            <div className="absolute inset-0 rounded-full border-2 border-[#6C63FF]/40 animate-ping"></div>
+                          <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center mb-3.5 font-bold text-[14px] border-[3px] relative ${
+                            liveQueueData?.rawAppt?.status === 'IN_CONSULTATION' 
+                              ? 'bg-[#6C63FF] text-white border-white shadow-[0_0_15px_rgba(108,99,255,0.4)]' 
+                              : liveQueueData?.rawAppt?.status === 'COMPLETED' 
+                                ? 'bg-[#6C63FF] text-white border-white'
+                                : 'bg-white text-slate-300 border-slate-200'
+                          }`}>
+                            {liveQueueData?.rawAppt?.status === 'IN_CONSULTATION' && <div className="absolute inset-0 rounded-full border-2 border-[#6C63FF]/40 animate-ping"></div>}
                             2
                           </div>
                           <p className="text-[12px] font-bold text-slate-800 mb-1">Doctor</p>
-                          <p className="text-[10px] font-bold text-[#6C63FF] mb-1">In Progress</p>
-                          <p className="text-[9px] font-medium text-slate-400">10:15 AM</p>
+                          {liveQueueData?.rawAppt?.status === 'IN_CONSULTATION' ? (
+                            <p className="text-[10px] font-bold text-[#6C63FF] mb-1">In Progress</p>
+                          ) : liveQueueData?.rawAppt?.status === 'COMPLETED' ? (
+                            <p className="text-[10px] font-bold text-emerald-500 mb-1">Completed</p>
+                          ) : (
+                            <p className="text-[10px] font-bold text-slate-400">Pending</p>
+                          )}
                         </div>
 
                         {/* Step 3 */}
@@ -460,12 +532,18 @@ export default function PatientDashboard() {
                     <div className="flex flex-col sm:flex-row gap-8">
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Analysis Result</p>
-                        <h4 className="text-[18px] font-extrabold text-[#6C63FF] mb-6">Acne & Skin Irritation</h4>
+                        <h4 className="text-[18px] font-extrabold text-[#6C63FF] mb-6 line-clamp-2">{liveQueueData?.rawAppt?.symptoms || 'No symptoms reported'}</h4>
                         
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Risk Score</p>
                         <div className="flex items-end gap-4">
-                          <span className="text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-[8px]">Medium</span>
-                          <span className="text-[22px] font-black text-slate-800 leading-none">62<span className="text-[14px] text-slate-400 font-bold">/100</span></span>
+                          <span className={`text-[11px] font-bold px-3 py-1.5 rounded-[8px] ${
+                            liveQueueData?.priority === 'High' ? 'text-red-600 bg-red-50 border border-red-100' :
+                            liveQueueData?.priority === 'Medium' ? 'text-orange-600 bg-orange-50 border border-orange-100' :
+                            'text-emerald-600 bg-emerald-50 border border-emerald-100'
+                          }`}>
+                            {liveQueueData?.priority || '--'}
+                          </span>
+                          <span className="text-[22px] font-black text-slate-800 leading-none">{liveQueueData?.rawAppt?.priorityScore || 0}<span className="text-[14px] text-slate-400 font-bold">/100</span></span>
                         </div>
                       </div>
 
@@ -475,14 +553,16 @@ export default function PatientDashboard() {
                             <Stethoscope className="w-4 h-4 text-[#6C63FF]" />
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Suggested Department</p>
                           </div>
-                          <p className="text-[14px] font-bold text-[#6C63FF]">Dermatology</p>
+                          <p className="text-[14px] font-bold text-[#6C63FF]">{liveQueueData?.department || '--'}</p>
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-4 h-4 text-orange-500" />
+                            <Activity className={`w-4 h-4 ${liveQueueData?.priority === 'High' ? 'text-red-500' : liveQueueData?.priority === 'Medium' ? 'text-orange-500' : 'text-emerald-500'}`} />
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Triage Priority</p>
                           </div>
-                          <p className="text-[14px] font-bold text-orange-500">Medium</p>
+                          <p className={`text-[14px] font-bold ${liveQueueData?.priority === 'High' ? 'text-red-500' : liveQueueData?.priority === 'Medium' ? 'text-orange-500' : 'text-emerald-500'}`}>
+                            {liveQueueData?.priority || '--'}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -490,9 +570,9 @@ export default function PatientDashboard() {
                     <div className="mt-8 pt-6 border-t border-[#EEF2FF] flex items-center justify-between gap-4">
                       <p className="text-[11px] font-bold text-slate-800">AI Confidence</p>
                       <div className="flex-1 h-2 bg-[#EEF2FF] rounded-full overflow-hidden">
-                        <div className="h-full w-[78%] bg-[#6C63FF] rounded-full"></div>
+                        <div className="h-full bg-[#6C63FF] rounded-full transition-all duration-500" style={{ width: `${Math.min(85, (liveQueueData?.rawAppt?.priorityScore || 0) + 20)}%` }}></div>
                       </div>
-                      <p className="text-[11px] font-bold text-slate-800">78%</p>
+                      <p className="text-[11px] font-bold text-slate-800">{Math.min(85, (liveQueueData?.rawAppt?.priorityScore || 0) + 20)}%</p>
                     </div>
                   </motion.div>
 
@@ -685,53 +765,65 @@ export default function PatientDashboard() {
                       Live Updates
                     </span>
 
-                    <h2 className="text-[24px] font-black text-slate-800 mb-2">Dr. Priya Sharma</h2>
-                    <p className="text-[13px] font-bold text-[#6C63FF] mb-12">Dermatology • Room 402</p>
+                    {liveQueueData ? (
+                      <>
+                        <h2 className="text-[24px] font-black text-slate-800 mb-2">{liveQueueData.doctorName}</h2>
+                        <p className="text-[13px] font-bold text-[#6C63FF] mb-12">{liveQueueData.department} • {liveQueueData.room}</p>
 
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-20 mb-12 w-full">
-                      
-                      <div className="flex flex-col items-center">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Now Serving</p>
-                        <div className="w-32 h-32 rounded-[24px] bg-[#FAFBFF] border border-[#EEF2FF] flex items-center justify-center text-4xl font-black text-slate-400 shadow-inner">
-                          #15
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-20 mb-12 w-full">
+                          <div className="flex flex-col items-center">
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Now Serving</p>
+                            <div className="w-32 h-32 rounded-[24px] bg-[#FAFBFF] border border-[#EEF2FF] flex items-center justify-center text-4xl font-black text-slate-400 shadow-inner">
+                              {liveQueueData.nowServing}
+                            </div>
+                          </div>
+
+                          <div className="hidden md:flex flex-col gap-2 opacity-50">
+                            <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+
+                          <div className="flex flex-col items-center relative">
+                            <p className="text-[11px] font-bold text-[#6C63FF] uppercase tracking-wider mb-3">Your Token</p>
+                            <div className="w-40 h-40 rounded-[24px] bg-gradient-to-br from-[#6C63FF] to-[#8079FF] shadow-[0_10px_30px_rgba(108,99,255,0.3)] border-[4px] border-white flex items-center justify-center text-5xl font-black text-white relative z-10">
+                              {liveQueueData.yourToken}
+                            </div>
+                            <div className="absolute top-[26px] w-40 h-40 rounded-[24px] border-2 border-[#6C63FF]/30 animate-ping z-0 pointer-events-none"></div>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="hidden md:flex flex-col gap-2 opacity-50">
-                        <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 rounded-full bg-[#6C63FF] animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-
-                      <div className="flex flex-col items-center relative">
-                        <p className="text-[11px] font-bold text-[#6C63FF] uppercase tracking-wider mb-3">Your Token</p>
-                        <div className="w-40 h-40 rounded-[24px] bg-gradient-to-br from-[#6C63FF] to-[#8079FF] shadow-[0_10px_30px_rgba(108,99,255,0.3)] border-[4px] border-white flex items-center justify-center text-5xl font-black text-white relative z-10">
-                          #23
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl bg-[#FAFBFF] rounded-[20px] p-6 border border-[#EEF2FF]">
+                          <div className="text-center border-r border-[#EEF2FF]">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Wait Time</p>
+                            <p className="text-[18px] font-black text-slate-800">{liveQueueData.waitTime}</p>
+                          </div>
+                          <div className="text-center md:border-r border-[#EEF2FF]">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Ahead of You</p>
+                            <p className="text-[18px] font-black text-slate-800">{liveQueueData.aheadOfYou}</p>
+                          </div>
+                          <div className="text-center border-r border-[#EEF2FF]">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Est. Time</p>
+                            <p className="text-[18px] font-black text-slate-800">{liveQueueData.estTime}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Priority</p>
+                            <p className={`text-[18px] font-black ${liveQueueData.priorityColor}`}>{liveQueueData.priority}</p>
+                          </div>
                         </div>
-                        {/* Glow ring */}
-                        <div className="absolute top-[26px] w-40 h-40 rounded-[24px] border-2 border-[#6C63FF]/30 animate-ping z-0 pointer-events-none"></div>
+                      </>
+                    ) : (
+                      <div className="py-20 flex flex-col items-center">
+                        <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                          <Users className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-[18px] font-bold text-slate-800">No Active Queue</h3>
+                        <p className="text-[13px] text-slate-500 font-medium mt-1">You don't have any active appointments for today.</p>
+                        <button onClick={() => setActiveTab('Book Appointment')} className="mt-6 px-6 py-2.5 rounded-xl bg-[#6C63FF] text-white text-[13px] font-bold shadow-[0_4px_15px_rgba(108,99,255,0.25)]">
+                          Book Appointment
+                        </button>
                       </div>
-
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl bg-[#FAFBFF] rounded-[20px] p-6 border border-[#EEF2FF]">
-                      <div className="text-center border-r border-[#EEF2FF]">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Wait Time</p>
-                        <p className="text-[18px] font-black text-slate-800">12m</p>
-                      </div>
-                      <div className="text-center md:border-r border-[#EEF2FF]">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Ahead of You</p>
-                        <p className="text-[18px] font-black text-slate-800">8</p>
-                      </div>
-                      <div className="text-center border-r border-[#EEF2FF]">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Est. Time</p>
-                        <p className="text-[18px] font-black text-slate-800">10:45 AM</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Priority</p>
-                        <p className="text-[18px] font-black text-orange-500">Medium</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                 </div>
