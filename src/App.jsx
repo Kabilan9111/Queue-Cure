@@ -5,10 +5,8 @@ import PatientDashboard from './pages/PatientDashboard';
 
 import ReceptionDashboard from './pages/ReceptionDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
-
-// Placeholders for other dashboards
-const LabDashboard = () => <div className="p-10 text-2xl font-bold">Lab Dashboard (Coming Soon)</div>;
-const PharmacyDashboard = () => <div className="p-10 text-2xl font-bold">Pharmacy Dashboard (Coming Soon)</div>;
+import LabDashboard from './pages/LabDashboard';
+import PharmacyDashboard from './pages/PharmacyDashboard';
 
 function App() {
   return (
