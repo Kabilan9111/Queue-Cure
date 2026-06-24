@@ -1,36 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home,
-  Pill,
-  FlaskConical,
-  Bell,
-  Search,
-  ChevronDown,
-  ChevronRight,
-  MoreVertical,
-  Activity,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  Stethoscope,
-  Clock,
-  Calendar,
-  Plus,
-  Trash2,
-  Send
+  Home, Pill, FlaskConical, Bell, ChevronDown, ChevronRight, Activity, 
+  ArrowRight, Sparkles, CheckCircle2, AlertCircle, Stethoscope, Clock, 
+  Calendar, Plus, Trash2, Send, CheckSquare, Play
 } from 'lucide-react';
-import robotHead from '../assets/robot_head.png';
-
-// --- MOCK DATA ---
-const schedule = [
-  { id: 1, time: '09:00 AM', token: '#21', name: 'Ramesh Kumar', details: '28 Y • Male', status: 'In Progress' },
-  { id: 2, time: '09:20 AM', token: '#22', name: 'Anjali Verma', details: '32 Y • Female', status: 'Waiting' },
-  { id: 3, time: '09:40 AM', token: '#23', name: 'Vikram Singh', details: '45 Y • Male', status: 'Waiting' },
-  { id: 4, time: '10:00 AM', token: '#24', name: 'Neha Patel', details: '27 Y • Female', status: 'Upcoming' },
-  { id: 5, time: '10:20 AM', token: '#25', name: 'Suresh Yadav', details: '50 Y • Male', status: 'Upcoming' },
-];
 
 export default function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -38,6 +12,10 @@ export default function DoctorDashboard() {
   const [doctor, setDoctor] = useState({ name: 'Dr. Priya Sharma', specialization: 'Dermatologist' });
   const [toastMessage, setToastMessage] = useState(null);
   
+  // Dynamic Queue Data
+  const [myQueue, setMyQueue] = useState([]);
+  const [activePatient, setActivePatient] = useState(null);
+
   // Pharmacy Builder State
   const [medicines, setMedicines] = useState([
     { id: 1, name: '', dosage: '', frequency: '', duration: '', instructions: '' }
@@ -66,10 +44,63 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     const savedDoc = localStorage.getItem('doctor');
+    let currentDoctor = { name: 'Dr. Priya Sharma', specialization: 'Dermatology' };
     if (savedDoc) {
-      setDoctor(JSON.parse(savedDoc));
+      currentDoctor = JSON.parse(savedDoc);
+      setDoctor(currentDoctor);
     }
+    
+    // Load queue initially and setup polling (or event listener)
+    const loadQueue = () => {
+      const allQueues = JSON.parse(localStorage.getItem('doctorQueues') || '{}');
+      const queue = allQueues[currentDoctor.name] || [];
+      // Only show non-completed patients in the side list
+      setMyQueue(queue.filter(p => p.status !== 'COMPLETED'));
+      
+      // If we have an active patient, update their status if it changed
+      setActivePatient(prev => {
+        if (!prev) return null;
+        const updated = queue.find(p => p.id === prev.id);
+        return updated || prev;
+      });
+    };
+    
+    loadQueue();
+    const interval = setInterval(loadQueue, 2000); // basic polling for demo
+    return () => clearInterval(interval);
   }, []);
+
+  const updatePatientStatus = (patientId, newStatus) => {
+    const allQueues = JSON.parse(localStorage.getItem('doctorQueues') || '{}');
+    if (!allQueues[doctor.name]) return;
+    
+    const index = allQueues[doctor.name].findIndex(p => p.id === patientId);
+    if (index !== -1) {
+      allQueues[doctor.name][index].status = newStatus;
+      localStorage.setItem('doctorQueues', JSON.stringify(allQueues));
+      
+      const updatedQueue = allQueues[doctor.name].filter(p => p.status !== 'COMPLETED');
+      setMyQueue(updatedQueue);
+      
+      if (activePatient && activePatient.id === patientId) {
+        setActivePatient(allQueues[doctor.name][index]);
+      }
+    }
+  };
+
+  const handleStartConsultation = () => {
+    if (!activePatient) return;
+    updatePatientStatus(activePatient.id, 'IN_CONSULTATION');
+    showToast(`Started consultation with ${activePatient.patientName}`, 'success');
+  };
+
+  const handleCompleteConsultation = () => {
+    if (!activePatient) return;
+    updatePatientStatus(activePatient.id, 'COMPLETED');
+    showToast(`Completed consultation with ${activePatient.patientName}`, 'success');
+    setActivePatient(null);
+    setActiveTab('Home');
+  };
 
   const navLinks = [
     { id: 'Home', icon: Home, label: 'Home' },
@@ -96,6 +127,10 @@ export default function DoctorDashboard() {
   };
 
   const submitPharmacyOrder = () => {
+    if (!activePatient) {
+      showToast('Please select a patient first', 'error');
+      return;
+    }
     const validMeds = medicines.filter(m => m.name.trim() !== '');
     if (validMeds.length === 0) {
       showToast('Please add at least one medicine', 'error');
@@ -103,8 +138,8 @@ export default function DoctorDashboard() {
     }
     const order = {
       id: Date.now(),
-      patientToken: '#21',
-      patientName: 'Ramesh Kumar',
+      patientToken: activePatient.token,
+      patientName: activePatient.patientName,
       doctorName: doctor.name,
       department: doctor.specialization,
       medicines: validMeds,
@@ -138,14 +173,18 @@ export default function DoctorDashboard() {
   };
 
   const submitLabOrder = () => {
+    if (!activePatient) {
+      showToast('Please select a patient first', 'error');
+      return;
+    }
     if (selectedTests.length === 0) {
       showToast('Please select at least one lab test', 'error');
       return;
     }
     const order = {
       id: Date.now(),
-      patientToken: '#21',
-      patientName: 'Ramesh Kumar',
+      patientToken: activePatient.token,
+      patientName: activePatient.patientName,
       doctorName: doctor.name,
       department: doctor.specialization,
       tests: selectedTests,
@@ -160,7 +199,6 @@ export default function DoctorDashboard() {
     setLabNotes('');
     showToast('Lab Request Sent Successfully!', 'success');
   };
-
 
   return (
     <div className="min-h-screen bg-[#FAFBFF] flex font-sans text-slate-800 selection:bg-[#6C5CE7]/20 selection:text-[#6C5CE7]">
@@ -214,20 +252,6 @@ export default function DoctorDashboard() {
             )
           })}
         </div>
-
-        {/* AI Assistant Banner */}
-        <div className="p-5">
-          <div className="bg-gradient-to-br from-[#F4F4FF] to-[#FAFBFF] rounded-[24px] p-6 text-center border border-[#EEF2FF] shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden">
-            <div className="flex items-center justify-center gap-1.5 text-[#6C5CE7] mb-3 font-bold text-[13px]">
-              <Sparkles className="w-4 h-4" />
-              <h3>AI Clinical Assistant</h3>
-            </div>
-            <p className="text-[11px] text-slate-500 mb-5 leading-relaxed font-medium">Get AI-powered insights for better diagnosis and treatment.</p>
-            <button className="w-full text-[12px] font-bold text-[#6C5CE7] bg-white py-2.5 rounded-[12px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-[#EEF2FF] hover:shadow-md transition-all flex items-center justify-center gap-1.5">
-              Ask AI Assistant <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* MAIN CONTENT WRAPPER */}
@@ -241,16 +265,10 @@ export default function DoctorDashboard() {
             </button>
             <div className="flex items-center gap-2 cursor-pointer group">
               <span className="font-bold text-[14px] text-slate-800">Today, 24 Jun 2026</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </div>
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="relative cursor-pointer hover:bg-slate-50 p-2.5 rounded-full transition-colors border border-transparent hover:border-[#EEF2FF]">
-              <Bell className="w-5 h-5 text-slate-500" />
-              <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">5</span>
-            </div>
-            
             <div className="flex items-center gap-3 cursor-pointer group pl-2 border-l border-slate-100">
               <div className="hidden xl:block text-right pr-1">
                 <p className="text-[13px] font-bold text-slate-800 leading-tight">{doctor.name}</p>
@@ -259,7 +277,6 @@ export default function DoctorDashboard() {
               <div className="w-[42px] h-[42px] rounded-full overflow-hidden shadow-sm border-2 border-white group-hover:border-[#6C5CE7] transition-colors bg-gradient-to-tr from-purple-200 to-blue-200 flex items-center justify-center text-[#6C5CE7] font-bold text-[14px]">
                 {doctor.name.replace('Dr. ', '').charAt(0)}
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
             </div>
           </div>
         </header>
@@ -278,246 +295,190 @@ export default function DoctorDashboard() {
                 exit="hidden"
                 className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full"
               >
-                {/* COLUMN 1: Schedule (approx 3/12) */}
+                {/* COLUMN 1: Schedule */}
                 <motion.div variants={itemVariants} className="xl:col-span-3 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden h-[calc(100vh-140px)]">
                   <div className="p-6 border-b border-[#EEF2FF]">
                     <div className="flex items-center gap-2.5 mb-1">
                       <Clock className="w-[18px] h-[18px] text-[#6C5CE7]" />
-                      <h2 className="font-extrabold text-[16px] text-slate-800">Today's Schedule</h2>
+                      <h2 className="font-extrabold text-[16px] text-slate-800">My Assigned Queue</h2>
                     </div>
-                    <p className="text-[12px] text-slate-500 font-medium pl-[28px]">14 Appointments</p>
+                    <p className="text-[12px] text-slate-500 font-medium pl-[28px]">{myQueue.length} Patients Waiting</p>
                   </div>
                   
                   <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                    {schedule.map((item, idx) => {
-                      const isActive = idx === 0;
+                    {myQueue.map((item) => {
+                      const isActive = activePatient?.id === item.id;
                       return (
-                        <div key={item.id} className={`p-4 rounded-[16px] border ${isActive ? 'border-[#6C5CE7] bg-[#F4F4FF]' : 'border-[#EEF2FF] bg-white'} hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group`}>
+                        <div 
+                          key={item.id} 
+                          onClick={() => setActivePatient(item)}
+                          className={`p-4 rounded-[16px] border ${isActive ? 'border-[#6C5CE7] bg-[#F4F4FF]' : 'border-[#EEF2FF] bg-white'} hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group`}
+                        >
                           <div className="flex justify-between items-start mb-2">
-                            <span className="text-[11px] font-bold text-slate-500 uppercase">{item.time}</span>
+                            <span className="text-[11px] font-bold text-slate-500 uppercase">{item.appointmentTime || 'N/A'}</span>
                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              item.status === 'In Progress' ? 'bg-[#6C5CE7]/10 text-[#6C5CE7]' :
-                              item.status === 'Waiting' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-500'
+                              item.status === 'IN_CONSULTATION' ? 'bg-[#6C5CE7]/10 text-[#6C5CE7]' :
+                              item.status === 'ASSIGNED_TO_DOCTOR' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-500'
                             }`}>
-                              {item.status}
+                              {item.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
-                              <h3 className={`font-bold text-[14px] mb-0.5 ${isActive ? 'text-[#6C5CE7]' : 'text-slate-800'}`}>{item.name}</h3>
-                              <p className="text-[11px] font-semibold text-slate-400">{item.token} <span className="mx-1">•</span> {item.details}</p>
+                              <h3 className={`font-bold text-[14px] mb-0.5 ${isActive ? 'text-[#6C5CE7]' : 'text-slate-800'}`}>{item.patientName}</h3>
+                              <p className="text-[11px] font-semibold text-slate-400">{item.token} <span className="mx-1">•</span> Pos {item.queuePosition}</p>
                             </div>
                             <ChevronRight className={`w-4 h-4 ${isActive ? 'text-[#6C5CE7]' : 'text-slate-300 group-hover:text-slate-400'}`} />
                           </div>
                         </div>
                       )
                     })}
-                  </div>
-                  
-                  <div className="p-4 border-t border-[#EEF2FF]">
-                    <button className="w-full py-3 rounded-[12px] bg-white border border-[#EEF2FF] text-[#6C5CE7] text-[13px] font-bold flex items-center justify-center gap-2 hover:bg-[#F4F4FF] transition-colors">
-                      <Calendar className="w-4 h-4" /> View All Appointments
-                    </button>
+                    {myQueue.length === 0 && (
+                      <div className="text-center p-6 text-slate-400 text-sm font-medium">No assigned patients.</div>
+                    )}
                   </div>
                 </motion.div>
 
-                {/* COLUMN 2: Patient Profile & Details (approx 6/12) */}
+                {/* COLUMN 2: Patient Profile & Details */}
                 <motion.div variants={itemVariants} className="xl:col-span-6 flex flex-col gap-6 h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-6">
-                  
-                  {/* Top Profile Banner */}
-                  <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 relative overflow-hidden">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-5">
-                        <div className="w-20 h-20 rounded-[20px] bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
-                          <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=Ramesh`} alt="Patient" className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-2xl font-black text-slate-800">Ramesh Kumar</h2>
-                            <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Verified</span>
+                  {!activePatient ? (
+                    <div className="flex-1 bg-white rounded-[24px] border border-[#EEF2FF] flex items-center justify-center flex-col p-8 text-center text-slate-400">
+                      <Users className="w-16 h-16 mb-4 text-[#EEF2FF]" />
+                      <h2 className="text-xl font-bold text-slate-700">No Patient Selected</h2>
+                      <p className="text-sm mt-2">Select a patient from the queue to view their profile and start consultation.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Top Profile Banner */}
+                      <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 relative overflow-hidden">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-5">
+                            <div className="w-20 h-20 rounded-[20px] bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                              <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${activePatient.patientName}`} alt="Patient" className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h2 className="text-2xl font-black text-slate-800">{activePatient.patientName}</h2>
+                              </div>
+                              <p className="text-[13px] text-slate-500 font-medium mb-3">{activePatient.age || '25'} Years, {activePatient.gender || 'Unknown'} <span className="mx-2">•</span> {activePatient.phone || 'N/A'}</p>
+                              <div className="flex items-center gap-4 text-[12px] font-bold text-slate-600">
+                                <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Token: <span className="text-slate-800">{activePatient.token}</span></span>
+                                <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Dept: <span className="text-slate-800">{activePatient.department}</span></span>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[13px] text-slate-500 font-medium mb-3">28 Years, Male <span className="mx-2">•</span> 9876543210</p>
-                          <div className="flex items-center gap-4 text-[12px] font-bold text-slate-600">
-                            <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Token No: <span className="text-slate-800">#21</span></span>
-                            <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Time: <span className="text-slate-800">09:00 AM</span></span>
-                            <span className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Dept: <span className="text-slate-800">{doctor.specialization}</span></span>
+                        </div>
+                      </div>
+
+                      {/* Content Grid */}
+                      <div className="grid grid-cols-2 gap-6">
+                        {/* Chief Complaint */}
+                        <div className="col-span-1 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-6 h-6 rounded-full bg-[#F4F4FF] text-[#6C5CE7] flex items-center justify-center">
+                              <span className="text-lg font-serif">"</span>
+                            </div>
+                            <h3 className="font-extrabold text-[14px] text-slate-800">Reported Symptoms</h3>
+                          </div>
+                          <p className="text-[13px] leading-relaxed text-slate-600 font-medium">
+                            {activePatient.symptoms || 'No symptoms provided.'}
+                          </p>
+                        </div>
+
+                        {/* Vitals Mock */}
+                        <div className="col-span-1 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
+                          <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                              <Activity className="w-[16px] h-[16px] text-[#6C5CE7]" />
+                              <h3 className="font-extrabold text-[14px] text-slate-800">Vitals</h3>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-400 mb-0.5">BP</p>
+                              <p className="text-[14px] font-black text-slate-800">120/80 <span className="text-[10px] text-slate-400 font-medium">mmHg</span></p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-400 mb-0.5">Pulse</p>
+                              <p className="text-[14px] font-black text-slate-800">78 <span className="text-[10px] text-slate-400 font-medium">bpm</span></p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* AI Insights */}
+                        <div className="col-span-2 bg-gradient-to-br from-[#F4F4FF] to-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
+                          <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2 text-[#6C5CE7]">
+                              <Sparkles className="w-[18px] h-[18px]" />
+                              <h3 className="font-extrabold text-[14px] text-slate-800">AI Triage Insights</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-400 mb-1">AI Severity Score</p>
+                              <p className="text-[14px] font-black text-slate-800">{activePatient.priorityScore?.toFixed(1) || 'N/A'} / 10</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-400 mb-1">Recommendation</p>
+                              <p className="text-[12px] font-semibold text-slate-600">{activePatient.aiRecommendation || 'Standard consultation.'}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-white border border-[#EEF2FF] p-1 rounded-xl shadow-sm mb-2">
-                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=RameshKumar21`} alt="QR" className="w-full h-full opacity-80" />
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-400">Scan to Verify</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tabs */}
-                  <div className="flex items-center gap-8 border-b border-[#EEF2FF] px-2">
-                    {['Overview', 'Medical History', 'Vitals', 'Documents', 'Notes'].map(tab => (
-                      <button 
-                        key={tab}
-                        onClick={() => setActiveProfileTab(tab)}
-                        className={`pb-4 text-[13px] font-bold transition-all relative ${activeProfileTab === tab ? 'text-[#6C5CE7]' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        {tab}
-                        {activeProfileTab === tab && (
-                          <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#6C5CE7] rounded-t-full"></div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Content Grid */}
-                  <div className="grid grid-cols-2 gap-6">
-                    {/* Chief Complaint */}
-                    <div className="col-span-1 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-6 h-6 rounded-full bg-[#F4F4FF] text-[#6C5CE7] flex items-center justify-center">
-                          <span className="text-lg font-serif">"</span>
-                        </div>
-                        <h3 className="font-extrabold text-[14px] text-slate-800">Chief Complaint</h3>
-                      </div>
-                      <p className="text-[13px] leading-relaxed text-slate-600 font-medium">
-                        Severe acne, skin irritation and itching on face and back for the last 2 weeks. Redness increases after sweating.
-                      </p>
-                    </div>
-
-                    {/* Vitals */}
-                    <div className="col-span-1 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
-                      <div className="flex items-center justify-between mb-5">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-[16px] h-[16px] text-[#6C5CE7]" />
-                          <h3 className="font-extrabold text-[14px] text-slate-800">Vitals</h3>
-                        </div>
-                        <span className="text-[10px] font-semibold text-slate-400">(Today, 08:55 AM)</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-0.5">BP</p>
-                          <p className="text-[14px] font-black text-slate-800">120/80 <span className="text-[10px] text-slate-400 font-medium">mmHg</span></p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-0.5">Pulse</p>
-                          <p className="text-[14px] font-black text-slate-800">78 <span className="text-[10px] text-slate-400 font-medium">bpm</span></p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-0.5">Weight</p>
-                          <p className="text-[14px] font-black text-slate-800">72 <span className="text-[10px] text-slate-400 font-medium">kg</span></p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-0.5">Height</p>
-                          <p className="text-[14px] font-black text-slate-800">175 <span className="text-[10px] text-slate-400 font-medium">cm</span></p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* AI Insights */}
-                    <div className="col-span-2 bg-gradient-to-br from-[#F4F4FF] to-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6">
-                      <div className="flex items-center justify-between mb-5">
-                        <div className="flex items-center gap-2 text-[#6C5CE7]">
-                          <Sparkles className="w-[18px] h-[18px]" />
-                          <h3 className="font-extrabold text-[14px] text-slate-800">AI Suggested Insights</h3>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">Confidence 83%</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-6">
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-1">Likely Condition</p>
-                          <p className="text-[14px] font-black text-slate-800">Acne Vulgaris</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-1">Severity</p>
-                          <p className="text-[14px] font-black text-amber-500">Moderate</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-slate-400 mb-1.5">Recommended Actions</p>
-                          <ul className="text-[12px] font-semibold text-slate-600 space-y-1">
-                            <li className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-400 rounded-full"></div> Topical Treatment</li>
-                            <li className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-400 rounded-full"></div> Skin Care Routine</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
+                    </>
+                  )}
                 </motion.div>
 
-                {/* COLUMN 3: Treatment Plan (approx 3/12) */}
+                {/* COLUMN 3: Consultation Controls */}
                 <motion.div variants={itemVariants} className="xl:col-span-3 flex flex-col gap-6 h-[calc(100vh-140px)]">
-                  <div className="flex-1 bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 flex flex-col overflow-hidden">
-                    <h2 className="font-extrabold text-[16px] text-slate-800 mb-6">Treatment Plan</h2>
-                    
-                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
-                      
-                      {/* Medicines List */}
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-[13px] font-bold text-slate-800">Prescribe Medicines</h3>
-                          <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">3</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex gap-3 items-start border-b border-slate-50 pb-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7] mt-1.5 shrink-0"></div>
-                            <div>
-                              <p className="text-[13px] font-bold text-slate-700">Cetirizine 10mg</p>
-                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">1-0-1 (After Food)</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-3 items-start border-b border-slate-50 pb-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7] mt-1.5 shrink-0"></div>
-                            <div>
-                              <p className="text-[13px] font-bold text-slate-700">Clindamycin Gel</p>
-                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Apply at night</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-3 items-start border-b border-slate-50 pb-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7] mt-1.5 shrink-0"></div>
-                            <div>
-                              <p className="text-[13px] font-bold text-slate-700">Vitamin B Complex</p>
-                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">1-0-1 (After Food)</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Lab Tests List */}
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-[13px] font-bold text-slate-800">Request Lab Tests</h3>
-                          <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">2</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex gap-3 items-start border-b border-slate-50 pb-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7] mt-1.5 shrink-0"></div>
-                            <p className="text-[13px] font-bold text-slate-700">Complete Blood Count (CBC)</p>
-                          </div>
-                          <div className="flex gap-3 items-start">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7] mt-1.5 shrink-0"></div>
-                            <p className="text-[13px] font-bold text-slate-700">Allergy Panel</p>
-                          </div>
+                  {activePatient ? (
+                    <>
+                      <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 flex flex-col gap-4">
+                        <h2 className="font-extrabold text-[16px] text-slate-800">Consultation Actions</h2>
+                        
+                        {activePatient.status !== 'IN_CONSULTATION' ? (
+                          <button 
+                            onClick={handleStartConsultation}
+                            className="w-full py-4 rounded-[16px] bg-[#6C5CE7] text-white text-[13px] font-bold shadow-[0_4px_15px_rgba(108,92,231,0.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Play className="w-4 h-4" /> Start Consultation
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={handleCompleteConsultation}
+                            className="w-full py-4 rounded-[16px] bg-emerald-500 text-white text-[13px] font-bold shadow-[0_4px_15px_rgba(16,185,129,0.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                          >
+                            <CheckSquare className="w-4 h-4" /> Complete Consultation
+                          </button>
+                        )}
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <button 
+                            onClick={() => setActiveTab('Pharmacy')} 
+                            disabled={activePatient.status !== 'IN_CONSULTATION'}
+                            className="py-3 rounded-[12px] bg-white border border-[#EEF2FF] text-[#6C5CE7] text-[12px] font-bold hover:bg-[#F4F4FF] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            <Pill className="w-4 h-4" /> Pharmacy
+                          </button>
+                          <button 
+                            onClick={() => setActiveTab('Lab')} 
+                            disabled={activePatient.status !== 'IN_CONSULTATION'}
+                            className="py-3 rounded-[12px] bg-white border border-[#EEF2FF] text-[#6C5CE7] text-[12px] font-bold hover:bg-[#F4F4FF] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            <FlaskConical className="w-4 h-4" /> Lab
+                          </button>
                         </div>
                       </div>
-
+                    </>
+                  ) : (
+                    <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 text-center opacity-50">
+                      <p className="text-[13px] font-bold text-slate-500">Actions unavailable until patient is selected.</p>
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-4 shrink-0">
-                    <button onClick={() => setActiveTab('Pharmacy')} className="py-3.5 rounded-[16px] bg-[#6C5CE7] text-white text-[13px] font-bold shadow-[0_4px_15px_rgba(108,92,231,0.25)] hover:shadow-[0_6px_20px_rgba(108,92,231,0.3)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                      <Pill className="w-4 h-4" /> Go to Pharmacy
-                    </button>
-                    <button onClick={() => setActiveTab('Lab')} className="py-3.5 rounded-[16px] bg-white border border-[#EEF2FF] text-[#6C5CE7] text-[13px] font-bold shadow-[0_4px_15px_rgba(0,0,0,0.02)] hover:bg-[#F4F4FF] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                      <FlaskConical className="w-4 h-4" /> Go to Lab
-                    </button>
-                  </div>
+                  )}
                 </motion.div>
               </motion.div>
             )}
-
 
             {/* --- PHARMACY BUILDER VIEW --- */}
             {activeTab === 'Pharmacy' && (
@@ -529,7 +490,6 @@ export default function DoctorDashboard() {
                 exit="hidden"
                 className="max-w-5xl mx-auto space-y-6 pb-20"
               >
-                {/* Header & Patient Info */}
                 <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-8">
                   <div className="flex justify-between items-center mb-6">
                     <div>
@@ -538,10 +498,12 @@ export default function DoctorDashboard() {
                       </h2>
                       <p className="text-[13px] text-slate-500 font-medium">Create a new prescription for the pharmacy</p>
                     </div>
-                    <div className="bg-[#F4F4FF] border border-[#EEF2FF] px-5 py-3 rounded-[16px] text-right">
-                      <p className="text-[11px] font-bold text-[#6C5CE7] mb-0.5">Active Patient</p>
-                      <p className="text-[14px] font-black text-slate-800">Ramesh Kumar <span className="text-[12px] text-slate-400 font-semibold ml-2">#21</span></p>
-                    </div>
+                    {activePatient && (
+                      <div className="bg-[#F4F4FF] border border-[#EEF2FF] px-5 py-3 rounded-[16px] text-right">
+                        <p className="text-[11px] font-bold text-[#6C5CE7] mb-0.5">Active Patient</p>
+                        <p className="text-[14px] font-black text-slate-800">{activePatient.patientName} <span className="text-[12px] text-slate-400 font-semibold ml-2">{activePatient.token}</span></p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Medicines Table */}
@@ -629,7 +591,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* Notes & Submit */}
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[13px] font-bold text-slate-700 mb-2">Special Instructions / Notes</label>
@@ -665,7 +626,6 @@ export default function DoctorDashboard() {
                 exit="hidden"
                 className="max-w-4xl mx-auto space-y-6 pb-20"
               >
-                {/* Header & Patient Info */}
                 <div className="bg-white rounded-[24px] border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-8">
                   <div className="flex justify-between items-center mb-8">
                     <div>
@@ -674,13 +634,14 @@ export default function DoctorDashboard() {
                       </h2>
                       <p className="text-[13px] text-slate-500 font-medium">Select and request lab tests for the patient</p>
                     </div>
-                    <div className="bg-[#F4F4FF] border border-[#EEF2FF] px-5 py-3 rounded-[16px] text-right">
-                      <p className="text-[11px] font-bold text-[#6C5CE7] mb-0.5">Active Patient</p>
-                      <p className="text-[14px] font-black text-slate-800">Ramesh Kumar <span className="text-[12px] text-slate-400 font-semibold ml-2">#21</span></p>
-                    </div>
+                    {activePatient && (
+                      <div className="bg-[#F4F4FF] border border-[#EEF2FF] px-5 py-3 rounded-[16px] text-right">
+                        <p className="text-[11px] font-bold text-[#6C5CE7] mb-0.5">Active Patient</p>
+                        <p className="text-[14px] font-black text-slate-800">{activePatient.patientName} <span className="text-[12px] text-slate-400 font-semibold ml-2">{activePatient.token}</span></p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Test Selection Grid */}
                   <div className="mb-8">
                     <h3 className="text-[13px] font-bold text-slate-800 mb-4 flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7]"></div> Common Tests
@@ -710,7 +671,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* Custom Test Entry */}
                   <div className="mb-8 p-6 bg-slate-50 rounded-[20px] border border-[#EEF2FF]">
                     <h3 className="text-[13px] font-bold text-slate-800 mb-3 flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> Other Tests
@@ -728,7 +688,6 @@ export default function DoctorDashboard() {
                       </button>
                     </form>
 
-                    {/* Display Custom Tests inside selection */}
                     {selectedTests.filter(t => !commonLabTests.includes(t)).length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {selectedTests.filter(t => !commonLabTests.includes(t)).map(test => (
@@ -741,7 +700,6 @@ export default function DoctorDashboard() {
                     )}
                   </div>
 
-                  {/* Notes & Submit */}
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[13px] font-bold text-slate-700 mb-2">Instructions for Lab</label>

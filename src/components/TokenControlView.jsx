@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity, ChevronLeft, Stethoscope, Users, Clock } from 'lucide-react';
+import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity, ChevronLeft, Stethoscope, Users, Clock, Send } from 'lucide-react';
 
 const doctorsList = [
   { id: 1, name: 'Dr. Priya Sharma', specialization: 'Dermatology', room: 'Room 1' },
@@ -58,6 +58,51 @@ export default function TokenControlView({ showToast }) {
 
   const handleComplete = (appt) => {
     updateAppointment(appt.id, { status: 'COMPLETED' }, `Marked Token ${appt.token} as Completed`);
+  };
+
+  const handleAssignQueue = () => {
+    const allAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+    const doctorQueues = JSON.parse(localStorage.getItem('doctorQueues') || '{}');
+    const docName = selectedDoctor.name;
+    
+    if (!doctorQueues[docName]) {
+      doctorQueues[docName] = [];
+    }
+
+    // Find all approved appointments for this doctor
+    const toAssign = allAppointments.filter(app => app.status === 'APPROVED' && app.doctorName === docName);
+    
+    if (toAssign.length === 0) {
+      if (showToast) showToast('No approved patients to assign in this queue', 'error');
+      return;
+    }
+
+    toAssign.forEach(appt => {
+      // 1. Update global appointment status
+      const index = allAppointments.findIndex(app => app.id === appt.id);
+      if (index !== -1) {
+        allAppointments[index] = { 
+          ...allAppointments[index], 
+          status: 'ASSIGNED_TO_DOCTOR',
+          assignedAt: new Date().toISOString()
+        };
+      }
+      
+      // 2. Add to doctor queue if not already there
+      const alreadyAssigned = doctorQueues[docName].some(a => a.id === appt.id);
+      if (!alreadyAssigned) {
+        doctorQueues[docName].push({ ...appt, status: 'ASSIGNED_TO_DOCTOR', assignedAt: new Date().toISOString() });
+      }
+    });
+
+    localStorage.setItem('appointments', JSON.stringify(allAppointments));
+    localStorage.setItem('doctorQueues', JSON.stringify(doctorQueues));
+
+    // 3. Update local state
+    const approved = allAppointments.filter(app => app.status === 'APPROVED');
+    setAllTokens(approved);
+
+    if (showToast) showToast(`Assigned ${toAssign.length} patients to ${docName}'s Dashboard`, 'success');
   };
 
   const getSeverityStyle = (severity) => {
@@ -187,6 +232,12 @@ export default function TokenControlView({ showToast }) {
           </div>
 
           <div className="flex gap-4">
+            <button 
+              onClick={handleAssignQueue}
+              className="bg-[#6C5CE7] hover:bg-[#5a4cdb] text-white px-5 py-2.5 rounded-xl text-[13px] font-bold shadow-[0_4px_15px_rgba(108,92,231,0.25)] hover:shadow-[0_6px_20px_rgba(108,92,231,0.3)] transition-all hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" /> Assign Queue To Doctor
+            </button>
             <div className="bg-[#FAFBFF] border border-[#EEF2FF] px-4 py-2.5 rounded-xl flex items-center gap-3">
               <Users className="w-4 h-4 text-slate-400" />
               <div>
@@ -285,7 +336,7 @@ export default function TokenControlView({ showToast }) {
                           </button>
                           <button 
                             onClick={() => handleComplete(appt)}
-                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors border border-emerald-100 hover:border-emerald-500 ml-2"
+                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors border border-emerald-100 hover:border-emerald-500 ml-1"
                             title="Mark Completed"
                           >
                             <CheckSquare className="w-4 h-4" />

@@ -19,17 +19,36 @@ export default function QueueManagementView({ showToast }) {
     const index = allAppointments.findIndex(app => app.id === appointment.id);
     
     if (index !== -1) {
-      // Generate Sequential Token
-      const approvedCount = allAppointments.filter(a => a.status === 'APPROVED' || a.status === 'COMPLETED').length;
-      const token = `P-${String(approvedCount + 1).padStart(3, '0')}`; // E.g., P-001
+      const deptMap = {
+        'Gynecology': 'G',
+        'Dermatology': 'D',
+        'Cardiology': 'C',
+        'Neurology': 'N',
+        'Orthopedics': 'O',
+        'Pediatrics': 'P',
+        'ENT': 'E',
+        'General Physician': 'GP',
+        'General Medicine': 'GM'
+      };
+      
+      const dept = appointment.specialization || appointment.department || 'General Medicine';
+      const prefix = deptMap[dept] || 'T';
+
+      // Count only tokens from this specific department that have been approved or beyond
+      const deptCount = allAppointments.filter(a => 
+        (a.status === 'APPROVED' || a.status === 'COMPLETED' || a.status === 'ASSIGNED_TO_DOCTOR' || a.status === 'IN_CONSULTATION') && 
+        (a.specialization === dept || a.department === dept)
+      ).length;
+      
+      const token = `${prefix}-${String(deptCount + 1).padStart(3, '0')}`; // E.g., G-001
       
       const room = `Room ${Math.floor(Math.random() * 10) + 1}`; // E.g., Room 4
       
-      // Calculate queue position based on AI priorityScore
-      const existingApproved = allAppointments.filter(a => a.status === 'APPROVED');
+      // Calculate queue position based on AI priorityScore for THIS SPECIFIC DOCTOR/DEPARTMENT
+      const existingApproved = allAppointments.filter(a => a.status === 'APPROVED' && a.doctorName === appointment.doctorName);
       const sortedByAI = [...existingApproved, appointment].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
       
-      // We will assign queue positions strictly based on this sorted order
+      // Assign queue positions strictly based on this sorted order
       sortedByAI.forEach((app, i) => {
         const appIndex = allAppointments.findIndex(a => a.id === app.id);
         if (appIndex !== -1) {
