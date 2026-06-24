@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // PATIENT, RECEPTION, DOCTOR, PHARMACY, LAB
+  createdAt DateTime @default(now())
+
+  // Relations
+  doctorProfile  Doctor?
+  patientProfile Patient?
+}
+
+model Doctor {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  name           String
+  specialization String
+  email          String   @unique
+  
+  user           User     @relation(fields: [userId], references: [id])
+  appointments   Appointment[]
+  prescriptions  Prescription[]
+  labRequests    LabRequest[]
+}
+
+model Patient {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  tokenNumber String?  @unique
+  name        String
+  age         Int
+  gender      String
+  phone       String
+  bloodGroup  String
+  email       String   @unique
+  symptoms    String?
+  status      String   @default("Pending Approval")
+  qrCode      String?  @unique
+  createdAt   DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  appointments  Appointment[]
+  prescriptions Prescription[]
+  labRequests   LabRequest[]
+  notifications Notification[]
+}
+
+model Appointment {
+  id              Int      @id @default(autoincrement())
+  patientId       Int
+  doctorId        Int
+  appointmentDate DateTime
+  slotTime        String
+  status          String   @default("Pending Approval") // Pending Approval, Approved, Token Assigned, Completed
+  createdAt       DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+}
+
+model Prescription {
+  id        Int      @id @default(autoincrement())
+  patientId Int
+  doctorId  Int
+  medicines Json     // Array of medicine objects
+  notes     String?
+  status    String   @default("Pending") // Pending, Waiting, Completed
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+}
+
+model LabRequest {
+  id        Int      @id @default(autoincrement())
+  patientId Int
+  doctorId  Int
+  tests     Json     // Array of test names
+  notes     String?
+  status    String   @default("Pending") // Pending, Waiting Sample, Processing, Completed
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  patientId Int
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+}
