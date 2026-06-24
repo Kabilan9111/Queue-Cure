@@ -23,11 +23,11 @@ const doctors = [
  { id: 1, name: "Dr. Arjun Kumar", specialization: "Cardiology", email: "cardio@queuecure.ai", password: "Cardio@123" },
  { id: 2, name: "Dr. Priya Sharma", specialization: "Dermatology", email: "derma@queuecure.ai", password: "Derma@123" },
  { id: 3, name: "Dr. Meera Nair", specialization: "Gynecology", email: "gyno@queuecure.ai", password: "Gyno@123" },
- { id: 4, name: "Dr. Rajan Verma", specialization: "Orthopedics", email: "ortho@queuecure.ai", password: "Ortho@123" },
- { id: 5, name: "Dr. Vikram Singh", specialization: "Neurology", email: "neuro@queuecure.ai", password: "Neuro@123" },
- { id: 6, name: "Dr. Anitha Devi", specialization: "Pediatrics", email: "pedia@queuecure.ai", password: "Pedia@123" },
+ { id: 4, name: "Dr. Raj Patel", specialization: "Orthopedics", email: "ortho@queuecure.ai", password: "Ortho@123" },
+ { id: 5, name: "Dr. Neha Gupta", specialization: "Neurology", email: "neuro@queuecure.ai", password: "Neuro@123" },
+ { id: 6, name: "Dr. Sarah Joseph", specialization: "Pediatrics", email: "pedia@queuecure.ai", password: "Pedia@123" },
  { id: 7, name: "Dr. Karthik Rao", specialization: "ENT", email: "ent@queuecure.ai", password: "ENT@123" },
- { id: 8, name: "Dr. Suresh Patel", specialization: "General Medicine", email: "general@queuecure.ai", password: "General@123" }
+ { id: 8, name: "Dr. Amit Verma", specialization: "General Medicine", email: "general@queuecure.ai", password: "General@123" }
 ];
 
 export default function Login() {

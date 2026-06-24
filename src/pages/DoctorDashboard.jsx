@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home, Pill, FlaskConical, Bell, ChevronDown, ChevronRight, Activity, 
   ArrowRight, Sparkles, CheckCircle2, AlertCircle, Stethoscope, Clock, 
-  Calendar, Plus, Trash2, Send, CheckSquare, Play
+  Calendar, Plus, Trash2, Send, CheckSquare, Play, Users
 } from 'lucide-react';
 
 export default function DoctorDashboard() {
