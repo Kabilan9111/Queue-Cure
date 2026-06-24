@@ -109,7 +109,7 @@ export default function QueueManagementView({ showToast }) {
               <tbody className="text-[13px] font-bold text-slate-700">
                 {pendingAppointments.map((appt, i) => (
                   <motion.tr variants={itemVariants} key={appt.id} className="border-b border-[#EEF2FF] hover:bg-[#FAFBFF] transition-colors">
-                    <td className="py-5 pl-6 font-extrabold text-slate-800">Patient #{appt.patientId}</td>
+                    <td className="py-5 pl-6 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
                     <td className="py-5">{appt.doctorName}</td>
                     <td className="py-5 text-slate-500">{appt.department}</td>
                     <td className="py-5">

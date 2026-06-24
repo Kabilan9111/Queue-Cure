@@ -51,6 +51,13 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
     const newAppt = {
       id: Date.now(),
       patientId: 1,
+      patientName: patientInfo.fullName,
+      age: patientInfo.age,
+      gender: patientInfo.gender,
+      phone: patientInfo.phone,
+      bloodGroup: patientInfo.bloodGroup,
+      address: patientInfo.address,
+      emergencyContact: patientInfo.emergencyContact,
       doctorId: selectedDoctor.id,
       doctorName: selectedDoctor.name,
       specialization: selectedDoctor.specialization,

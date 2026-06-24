@@ -109,7 +109,7 @@ export default function TokenControlView({ showToast }) {
                         {appt.token}
                       </div>
                     </td>
-                    <td className="py-5 font-extrabold text-slate-800">Patient #{appt.patientId}</td>
+                    <td className="py-5 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
                     <td className="py-5">
                       <p className="text-slate-800">{appt.doctorName}</p>
                       <p className="text-[11px] text-[#6C5CE7] mt-0.5">{appt.room}</p>
