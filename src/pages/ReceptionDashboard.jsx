@@ -14,24 +14,11 @@ import QueueManagementView from '../components/QueueManagementView';
 import TokenControlView from '../components/TokenControlView';
 import DoctorsView from '../components/DoctorsView';
 
-const initialPatients = [
-  { id: 1, token: 'P-03', name: 'Ramesh Kumar', symptoms: 'Chest pain, breathlessness since 2hrs', doctor: 'Dr. Arjun', time: '9:00 AM', score: 9.2, status: 'In Progress' },
-  { id: 2, token: 'P-07', name: 'Lakshmi Nair', symptoms: 'High fever 103°F, vomiting', doctor: 'Dr. Meera', time: '9:30 AM', score: 7.8, status: 'Waiting' },
-  { id: 3, token: 'P-11', name: 'Suresh Pillai', symptoms: 'BP checkup, monthly follow-up', doctor: 'Dr. Rajan', time: '10:00 AM', score: 3.5, status: 'Waiting' },
-  { id: 4, token: 'P-14', name: 'Anitha Selvam', symptoms: 'Severe migraine, light sensitivity', doctor: 'Dr. Priya', time: '10:00 AM', score: 7.1, status: 'Pending' },
-  { id: 5, token: 'P-19', name: 'Vijay Mohan', symptoms: 'General checkup, no complaint', doctor: 'Dr. Arjun', time: '10:30 AM', score: 2.2, status: 'Pending' },
-];
-
-const initialNotifications = [
-  { id: 1, type: 'red', text: 'New booking: Ramesh Kumar — chest pain, Dr. Arjun 9AM. AI score 9.2 — urgent.', time: '2 mins ago' },
-  { id: 2, type: 'amber', text: 'Deepa Krishnan (P-23) marked no-show. 11AM slot with Dr. Meera is now free.', time: '11 mins ago' },
-];
-
 const doctorsList = [
-  { name: 'Dr. Arjun', color: { dot: 'bg-purple-500', avatarBg: 'bg-purple-100', avatarText: 'text-purple-600' } },
-  { name: 'Dr. Meera', color: { dot: 'bg-green-500', avatarBg: 'bg-green-100', avatarText: 'text-green-600' } },
-  { name: 'Dr. Rajan', color: { dot: 'bg-amber-500', avatarBg: 'bg-amber-100', avatarText: 'text-amber-600' } },
-  { name: 'Dr. Priya', color: { dot: 'bg-pink-500', avatarBg: 'bg-pink-100', avatarText: 'text-pink-600' } }
+  { name: 'Dr. Arjun', specialization: 'Cardiology', color: { dot: 'bg-purple-500', avatarBg: 'bg-purple-100', avatarText: 'text-purple-600' } },
+  { name: 'Dr. Meera', specialization: 'Gynecology', color: { dot: 'bg-green-500', avatarBg: 'bg-green-100', avatarText: 'text-green-600' } },
+  { name: 'Dr. Rajan', specialization: 'Orthopedics', color: { dot: 'bg-amber-500', avatarBg: 'bg-amber-100', avatarText: 'text-amber-600' } },
+  { name: 'Dr. Priya', specialization: 'Dermatology', color: { dot: 'bg-pink-500', avatarBg: 'bg-pink-100', avatarText: 'text-pink-600' } }
 ];
 
 export default function ReceptionDashboard() {
@@ -43,12 +30,32 @@ export default function ReceptionDashboard() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const [patients, setPatients] = useState(initialPatients);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [patients, setPatients] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   
   const [bookingForm, setBookingForm] = useState({ name: '', doctor: 'Dr. Arjun', time: '11:00 AM', symptoms: '' });
   const [simulatedScore, setSimulatedScore] = useState(null);
   const [isSimulatingScore, setIsSimulatingScore] = useState(false);
+
+  useEffect(() => {
+    const fetchAppointments = () => {
+      const allAppts = JSON.parse(localStorage.getItem('appointments') || '[]');
+      const formatted = allAppts.map(app => ({
+        id: app.id,
+        token: app.token || '-',
+        name: app.patientName || app.name,
+        symptoms: app.symptoms,
+        doctor: app.doctorName || app.doctor,
+        time: app.appointmentTime || app.time,
+        score: app.priorityScore || app.score || 4.5,
+        status: app.status || 'Pending'
+      }));
+      setPatients(formatted.reverse()); // Show newest first
+    };
+    fetchAppointments();
+    const interval = setInterval(fetchAppointments, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Animation Variants
   const containerVariants = {
@@ -91,26 +98,31 @@ export default function ReceptionDashboard() {
   const submitNewBooking = () => {
     if (!bookingForm.name || !bookingForm.symptoms) return;
     const newScore = parseFloat(simulatedScore || 4.5);
-    const newToken = `P-${patients.length + 20}`;
-    const newPatient = {
-      id: Date.now(),
-      token: newToken,
-      name: bookingForm.name,
+    
+    const newAppt = {
+      id: Date.now().toString(),
+      patientName: bookingForm.name,
       symptoms: bookingForm.symptoms,
-      doctor: bookingForm.doctor,
-      time: bookingForm.time,
-      score: newScore,
-      status: 'Pending'
+      doctorName: bookingForm.doctor,
+      department: doctorsList.find(d => d.name === bookingForm.doctor)?.specialization || 'General',
+      appointmentTime: bookingForm.time,
+      priorityScore: newScore,
+      status: 'Pending Approval'
     };
-    setPatients([newPatient, ...patients]);
+    
+    const allAppts = JSON.parse(localStorage.getItem('appointments') || '[]');
+    allAppts.push(newAppt);
+    localStorage.setItem('appointments', JSON.stringify(allAppts));
     
     const notifType = newScore >= 8 ? 'red' : (newScore >= 5 ? 'amber' : 'green');
     setNotifications([
-      { id: Date.now() + 1, type: notifType, text: `New booking: ${newPatient.name} — ${newPatient.doctor}. AI score ${newScore}.`, time: 'Just now' },
+      { id: Date.now() + 1, type: notifType, text: `New booking: ${newAppt.patientName} — ${newAppt.doctorName}. AI score ${newScore}.`, time: 'Just now' },
       ...notifications
     ]);
+    
     setBookingForm({ name: '', doctor: 'Dr. Arjun', time: '11:00 AM', symptoms: '' });
     setSimulatedScore(null);
+    showToast('Quick booking added to Queue Management', 'success');
   };
 
   const getScoreColor = (score) => {
@@ -129,10 +141,10 @@ export default function ReceptionDashboard() {
   };
 
   // KPI calculations
-  const totalPatients = 47 + patients.length;
-  const activeQueue = patients.filter(p => p.status === 'Waiting' || p.status === 'Pending').length + 15;
-  const chairOccupancy = patients.filter(p => p.status === 'Waiting').length + 35;
-  const nowServing = patients.find(p => p.status === 'In Progress') || patients[0];
+  const totalPatients = patients.length;
+  const activeQueue = patients.filter(p => p.status === 'APPROVED' || p.status === 'ASSIGNED_TO_DOCTOR' || p.status === 'IN_CONSULTATION').length;
+  const chairOccupancy = patients.filter(p => p.status === 'APPROVED').length;
+  const nowServing = patients.find(p => p.status === 'IN_CONSULTATION') || { token: '--', name: 'No Active Consultation', doctor: '--' };
 
   return (
     <div className="min-h-screen bg-[#FAFBFF] flex font-sans text-slate-800 selection:bg-[#6C5CE7]/20 selection:text-[#6C5CE7]">
@@ -494,11 +506,11 @@ export default function ReceptionDashboard() {
 
                 <div className="space-y-5">
                   {doctorsList.map((doc, idx) => {
-                    const totalLoad = 14 - idx; // Mock load
+                    const totalLoad = patients.filter(p => p.doctor === doc.name && (p.status === 'APPROVED' || p.status === 'ASSIGNED_TO_DOCTOR' || p.status === 'IN_CONSULTATION')).length;
                     let loadColor = 'bg-emerald-500';
-                    if (totalLoad > 12) loadColor = 'bg-amber-500';
-                    if (totalLoad > 15) loadColor = 'bg-red-500';
-                    const percent = Math.min((totalLoad / 20) * 100, 100);
+                    if (totalLoad > 5) loadColor = 'bg-amber-500';
+                    if (totalLoad > 10) loadColor = 'bg-red-500';
+                    const percent = Math.min((totalLoad / 15) * 100, 100);
 
                     return (
                       <div key={doc.name}>
