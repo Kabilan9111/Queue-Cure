@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
   BrainCircuit,
@@ -13,23 +14,46 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import illustration from '../assets/illustration.png';
 
+const doctors = [
+ { id: 1, name: "Dr. Arjun Kumar", specialization: "Cardiology", email: "cardio@queuecure.ai", password: "Cardio@123" },
+ { id: 2, name: "Dr. Priya Sharma", specialization: "Dermatology", email: "derma@queuecure.ai", password: "Derma@123" },
+ { id: 3, name: "Dr. Meera Nair", specialization: "Gynecology", email: "gyno@queuecure.ai", password: "Gyno@123" },
+ { id: 4, name: "Dr. Rajan Verma", specialization: "Orthopedics", email: "ortho@queuecure.ai", password: "Ortho@123" },
+ { id: 5, name: "Dr. Vikram Singh", specialization: "Neurology", email: "neuro@queuecure.ai", password: "Neuro@123" },
+ { id: 6, name: "Dr. Anitha Devi", specialization: "Pediatrics", email: "pedia@queuecure.ai", password: "Pedia@123" },
+ { id: 7, name: "Dr. Karthik Rao", specialization: "ENT", email: "ent@queuecure.ai", password: "ENT@123" },
+ { id: 8, name: "Dr. Suresh Patel", specialization: "General Medicine", email: "general@queuecure.ai", password: "General@123" }
+];
+
 export default function Login() {
-  const [selectedRole, setSelectedRole] = useState('Patient'); // Default to Patient
+  const [selectedRole, setSelectedRole] = useState('Doctor'); // Default to Doctor for testing
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorToast, setErrorToast] = useState(null);
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (selectedRole === 'Patient') {
+    
+    if (selectedRole === 'Doctor') {
+      const doctor = doctors.find(d => d.email === email && d.password === password);
+      if (doctor) {
+        localStorage.setItem("doctor", JSON.stringify(doctor));
+        navigate('/doctor');
+      } else {
+        setErrorToast("Invalid Doctor Credentials");
+        setTimeout(() => setErrorToast(null), 3000);
+      }
+    } else if (selectedRole === 'Patient') {
       navigate('/patient');
     } else if (selectedRole === 'Receptionist') {
       navigate('/reception');
-    } else if (selectedRole === 'Doctor') {
-      navigate('/doctor');
     } else if (selectedRole === 'Lab') {
       navigate('/lab');
     } else if (selectedRole === 'Pharmacy') {
@@ -65,40 +89,32 @@ export default function Login() {
   ];
 
   const roles = [
-    {
-      id: 'Receptionist',
-      icon: <UserSquare2 className="w-8 h-8" />,
-      title: "Receptionist",
-      desc: "Manage bookings, triage & tokens"
-    },
-    {
-      id: 'Doctor',
-      icon: <Stethoscope className="w-8 h-8 text-green-600" />,
-      title: "Doctor",
-      desc: "Consult patients & prescribe"
-    },
-    {
-      id: 'Patient',
-      icon: <User className="w-8 h-8 text-blue-500" />,
-      title: "Patient",
-      desc: "Book appointment & track queue"
-    },
-    {
-      id: 'Lab',
-      icon: <FlaskConical className="w-8 h-8 text-orange-500" />,
-      title: "Lab",
-      desc: "Manage tests & reports"
-    },
-    {
-      id: 'Pharmacy',
-      icon: <Pill className="w-8 h-8 text-rose-500" />,
-      title: "Pharmacy",
-      desc: "Manage medicines & prescriptions"
-    }
+    { id: 'Receptionist', icon: <UserSquare2 className="w-8 h-8" />, title: "Receptionist", desc: "Manage bookings, triage & tokens" },
+    { id: 'Doctor', icon: <Stethoscope className="w-8 h-8 text-green-600" />, title: "Doctor", desc: "Consult patients & prescribe" },
+    { id: 'Patient', icon: <User className="w-8 h-8 text-blue-500" />, title: "Patient", desc: "Book appointment & track queue" },
+    { id: 'Lab', icon: <FlaskConical className="w-8 h-8 text-orange-500" />, title: "Lab", desc: "Manage tests & reports" },
+    { id: 'Pharmacy', icon: <Pill className="w-8 h-8 text-rose-500" />, title: "Pharmacy", desc: "Manage medicines & prescriptions" }
   ];
 
   return (
-    <div className="min-h-screen flex bg-[#F6F8FD] font-sans selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen flex bg-[#F6F8FD] font-sans selection:bg-primary/20 selection:text-primary relative">
+      {/* ERROR TOAST */}
+      <AnimatePresence>
+        {errorToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white border border-red-100 shadow-[0_8px_30px_rgba(239,68,68,0.15)] rounded-2xl px-6 py-4 flex items-center gap-3"
+          >
+            <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+            </div>
+            <p className="text-sm font-bold text-slate-800">{errorToast}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* LEFT PANEL */}
       <div className="hidden lg:flex flex-col w-[40%] px-12 py-10 justify-between relative overflow-hidden bg-white/40">
         {/* Abstract Background Element */}
@@ -155,7 +171,7 @@ export default function Login() {
         <div className="absolute top-20 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-[800px] glass-panel rounded-[2rem] p-8 lg:p-12 z-10">
+        <div className="w-full max-w-[800px] glass-panel rounded-[2rem] p-8 lg:p-12 z-10 relative">
 
           {/* Top Section */}
           <div className="text-center mb-10">
@@ -176,6 +192,7 @@ export default function Login() {
                 const isActive = selectedRole === role.id;
                 return (
                   <button
+                    type="button"
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
                     className={`relative flex flex-col items-center text-center p-4 rounded-2xl transition-all duration-300 ${isActive
@@ -220,8 +237,10 @@ export default function Login() {
                 </div>
                 <input
                   type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-                  placeholder="Enter your email or username"
+                  placeholder={selectedRole === 'Doctor' ? "e.g., derma@queuecure.ai" : "Enter your email or username"}
                 />
               </div>
             </div>
@@ -236,8 +255,10 @@ export default function Login() {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-12 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-                  placeholder="Enter your password"
+                  placeholder={selectedRole === 'Doctor' ? "e.g., Derma@123" : "Enter your password"}
                 />
                 <button
                   type="button"
