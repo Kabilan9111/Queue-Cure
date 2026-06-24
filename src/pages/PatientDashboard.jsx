@@ -77,13 +77,11 @@ export default function PatientDashboard() {
   };
 
   // Mock data for appointments view
-  const myAppointments = JSON.parse(localStorage.getItem('appointments') || '[]').map(a => ({
-    ...a, doctorName: 'Dr. Priya Sharma', department: 'Dermatology', type: 'Consultation'
-  }));
+  const myAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
 
   if (myAppointments.length === 0) {
     myAppointments.push({ id: 1, appointmentDate: '2026-06-28', slotTime: '11:00 AM', doctorName: 'Dr. Priya Sharma', department: 'Dermatology', type: 'Follow-up', status: 'Confirmed' });
-    myAppointments.push({ id: 2, appointmentDate: '2026-07-10', slotTime: '09:30 AM', doctorName: 'Dr. Amit Verma', department: 'General Physician', type: 'Consultation', status: 'Confirmed' });
+    myAppointments.push({ id: 2, appointmentDate: '2026-07-10', slotTime: '09:30 AM', doctorName: 'Dr. Amit Verma', department: 'General Medicine', type: 'Consultation', status: 'Confirmed' });
   }
 
   return (

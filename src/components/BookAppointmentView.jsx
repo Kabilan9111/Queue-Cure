@@ -27,14 +27,14 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
   ];
 
   const doctors = [
-    { id: 1, name: 'Dr. Priya Sharma', spec: 'Dermatology' },
-    { id: 2, name: 'Dr. Arjun Kumar', spec: 'Cardiology' },
-    { id: 3, name: 'Dr. Meera Nair', spec: 'Gynecology' },
-    { id: 4, name: 'Dr. Raj Patel', spec: 'Orthopedics' },
-    { id: 5, name: 'Dr. Amit Verma', spec: 'General Medicine' },
-    { id: 6, name: 'Dr. Neha Gupta', spec: 'Neurology' },
-    { id: 7, name: 'Dr. Karthik Rao', spec: 'ENT' },
-    { id: 8, name: 'Dr. Sarah Joseph', spec: 'Pediatrics' },
+    { id: 1, name: 'Dr. Priya Sharma', specialization: 'Dermatology', department: 'Dermatology' },
+    { id: 2, name: 'Dr. Arjun Kumar', specialization: 'Cardiology', department: 'Cardiology' },
+    { id: 3, name: 'Dr. Meera Nair', specialization: 'Gynecology', department: 'Gynecology' },
+    { id: 4, name: 'Dr. Raj Patel', specialization: 'Orthopedics', department: 'Orthopedics' },
+    { id: 5, name: 'Dr. Amit Verma', specialization: 'General Medicine', department: 'General Medicine' },
+    { id: 6, name: 'Dr. Neha Gupta', specialization: 'Neurology', department: 'Neurology' },
+    { id: 7, name: 'Dr. Karthik Rao', specialization: 'ENT', department: 'ENT' },
+    { id: 8, name: 'Dr. Sarah Joseph', specialization: 'Pediatrics', department: 'Pediatrics' },
   ];
 
   // Calendar Logic (Mock for current month)
@@ -53,7 +53,9 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
       patientId: 1,
       doctorId: selectedDoctor.id,
       doctorName: selectedDoctor.name,
-      department: selectedDoctor.spec,
+      specialization: selectedDoctor.specialization,
+      department: selectedDoctor.department,
+      type: 'Consultation',
       appointmentDate: `2026-06-${selectedDate < 10 ? '0'+selectedDate : selectedDate}`,
       slotTime: selectedTime,
       status: 'Pending Approval',
@@ -215,7 +217,7 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
                   
                   <div>
                     <h4 className="text-[14px] font-extrabold text-slate-800">{doc.name}</h4>
-                    <p className="text-[11px] font-bold text-[#6C5CE7]">{doc.spec}</p>
+                    <p className="text-[11px] font-bold text-[#6C5CE7]">{doc.specialization}</p>
                     <span className="inline-block mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded uppercase tracking-wider">
                       Available
                     </span>
@@ -299,7 +301,7 @@ export default function BookAppointmentView({ setActiveTab, showToast }) {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Selected Doctor</p>
                 <p className="text-[15px] font-bold text-slate-800">{selectedDoctor ? selectedDoctor.name : <span className="text-slate-300">Pending Selection</span>}</p>
-                {selectedDoctor && <p className="text-[12px] font-bold text-[#6C5CE7]">{selectedDoctor.spec}</p>}
+                {selectedDoctor && <p className="text-[12px] font-bold text-[#6C5CE7]">{selectedDoctor.specialization}</p>}
               </div>
 
               <div>
