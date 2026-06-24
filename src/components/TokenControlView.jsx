@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity, BrainCircuit } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { UserCheck, Play, SkipForward, ArrowUpCircle, ArrowDownCircle, CheckSquare, Activity, ChevronLeft, Stethoscope, Users, Clock } from 'lucide-react';
+
+const doctorsList = [
+  { id: 1, name: 'Dr. Priya Sharma', specialization: 'Dermatology', room: 'Room 1' },
+  { id: 2, name: 'Dr. Arjun Kumar', specialization: 'Cardiology', room: 'Room 2' },
+  { id: 3, name: 'Dr. Meera Nair', specialization: 'Gynecology', room: 'Room 3' },
+  { id: 4, name: 'Dr. Raj Patel', specialization: 'Orthopedics', room: 'Room 4' },
+  { id: 5, name: 'Dr. Amit Verma', specialization: 'General Medicine', room: 'Room 5' },
+  { id: 6, name: 'Dr. Neha Gupta', specialization: 'Neurology', room: 'Room 6' },
+  { id: 7, name: 'Dr. Karthik Rao', specialization: 'ENT', room: 'Room 7' },
+  { id: 8, name: 'Dr. Sarah Joseph', specialization: 'Pediatrics', room: 'Room 8' },
+];
 
 export default function TokenControlView({ showToast }) {
-  const [approvedTokens, setApprovedTokens] = useState([]);
+  const [allTokens, setAllTokens] = useState([]);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
 
   useEffect(() => {
     const fetchTokens = () => {
       const allAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-      const approved = allAppointments
-        .filter(app => app.status === 'APPROVED')
-        .sort((a, b) => a.queuePosition - b.queuePosition);
-      setApprovedTokens(approved);
+      const approved = allAppointments.filter(app => app.status === 'APPROVED');
+      setAllTokens(approved);
     };
     fetchTokens();
   }, []);
@@ -23,10 +33,8 @@ export default function TokenControlView({ showToast }) {
       allAppointments[index] = { ...allAppointments[index], ...updates };
       localStorage.setItem('appointments', JSON.stringify(allAppointments));
       
-      const approved = allAppointments
-        .filter(app => app.status === 'APPROVED')
-        .sort((a, b) => a.queuePosition - b.queuePosition);
-      setApprovedTokens(approved);
+      const approved = allAppointments.filter(app => app.status === 'APPROVED');
+      setAllTokens(approved);
       
       if (showToast) showToast(message, 'success');
     }
@@ -64,7 +72,8 @@ export default function TokenControlView({ showToast }) {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+    exit: { opacity: 0 }
   };
 
   const itemVariants = {
@@ -72,81 +81,134 @@ export default function TokenControlView({ showToast }) {
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
   };
 
-  // Determine highest priority patient for AI Card
-  const highestPriorityPatient = [...approvedTokens].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))[0];
-
-  return (
-    <motion.div 
-      className="max-w-[1440px] mx-auto space-y-6 pb-20"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      exit="hidden"
-    >
-      {highestPriorityPatient && (
-        <motion.div variants={itemVariants} className="bg-gradient-to-br from-[#FAFBFF] to-white rounded-[24px] p-8 border border-[#6C5CE7]/20 shadow-[0_10px_40px_rgba(108,92,231,0.06)] relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#6C5CE7]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-          
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#6C5CE7] to-[#8B7CFF] text-white flex items-center justify-center shadow-md">
-              <BrainCircuit className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-[18px] font-black text-slate-800">AI Queue Recommendation</h2>
-              <p className="text-[12px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Smart Triage System</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
-            <div className="lg:col-span-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Patient</p>
-              <p className="text-[16px] font-extrabold text-slate-800">{highestPriorityPatient.patientName}</p>
-            </div>
-            <div className="lg:col-span-2">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Symptoms</p>
-              <p className="text-[14px] font-medium text-slate-700 leading-snug">{highestPriorityPatient.symptoms}</p>
-            </div>
-            <div className="lg:col-span-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">AI Score</p>
-              <div className="flex items-center gap-2">
-                <span className={`text-[16px] font-black ${getSeverityStyle(highestPriorityPatient.severity).text}`}>
-                  {highestPriorityPatient.priorityScore?.toFixed(1)} / 10
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${getSeverityStyle(highestPriorityPatient.severity).bg} ${getSeverityStyle(highestPriorityPatient.severity).text} ${getSeverityStyle(highestPriorityPatient.severity).border}`}>
-                  {highestPriorityPatient.severity}
-                </span>
-              </div>
-            </div>
-            <div className="lg:col-span-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Suggested Pos</p>
-              <p className="text-[16px] font-black text-[#6C5CE7]">Queue Position 1</p>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 rounded-xl bg-[#F4F4FF] border border-[#6C5CE7]/10 relative z-10">
-            <p className="text-[13px] font-bold text-slate-700">
-              <span className="text-[#6C5CE7]">Reason:</span> {highestPriorityPatient.aiRecommendation}
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="bg-white rounded-[24px] p-8 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+  // View 1: Doctor Dashboard
+  if (!selectedDoctor) {
+    return (
+      <motion.div 
+        className="max-w-[1440px] mx-auto space-y-6 pb-20"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-[16px] bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100">
             <UserCheck className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-[22px] font-extrabold text-slate-800">Token Control</h2>
-            <p className="text-[13px] text-slate-500 font-medium mt-0.5">Manage live queue flow and active tokens.</p>
+            <h2 className="text-[22px] font-extrabold text-slate-800">Doctor Queues</h2>
+            <p className="text-[13px] text-slate-500 font-medium mt-0.5">Manage live token flow for individual specialists.</p>
           </div>
         </div>
 
-        {approvedTokens.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {doctorsList.map((doc) => {
+            const docTokens = allTokens
+              .filter(app => app.doctorName === doc.name)
+              .sort((a, b) => a.queuePosition - b.queuePosition);
+            
+            const currentToken = docTokens.length > 0 ? docTokens[0].token : 'None';
+            const avgWaitTime = docTokens.length > 0 ? `${docTokens.length * 15} mins` : '0 mins';
+
+            return (
+              <motion.div 
+                key={doc.id} 
+                variants={itemVariants} 
+                className="bg-white rounded-[24px] p-6 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(108,92,231,0.08)] transition-all flex flex-col group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#6C5CE7] to-[#8B7CFF] text-white flex items-center justify-center shadow-md">
+                    <Stethoscope className="w-5 h-5" />
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider border ${docTokens.length > 5 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                    {docTokens.length > 5 ? 'Busy' : 'Available'}
+                  </span>
+                </div>
+
+                <div className="mb-6 flex-1">
+                  <h3 className="text-[16px] font-black text-slate-800 leading-tight mb-1">{doc.name}</h3>
+                  <p className="text-[12px] font-bold text-[#6C5CE7]">{doc.specialization} • {doc.room}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6 bg-[#FAFBFF] p-3 rounded-xl border border-[#EEF2FF]">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Queue</p>
+                    <p className="text-[16px] font-black text-slate-800">{docTokens.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Active</p>
+                    <p className="text-[14px] font-black text-[#6C5CE7] bg-[#6C5CE7]/10 inline-block px-2 py-0.5 rounded-lg">{currentToken}</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setSelectedDoctor(doc)}
+                  className="w-full py-3 rounded-xl bg-slate-50 text-[#6C5CE7] font-bold text-[13px] border border-slate-200 group-hover:bg-[#6C5CE7] group-hover:text-white group-hover:border-[#6C5CE7] transition-colors"
+                >
+                  View Queue
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // View 2: Individual Doctor Queue
+  const docTokens = allTokens
+    .filter(app => app.doctorName === selectedDoctor.name)
+    .sort((a, b) => a.queuePosition - b.queuePosition);
+
+  return (
+    <motion.div 
+      className="max-w-[1440px] mx-auto space-y-6 pb-20"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+    >
+      <button 
+        onClick={() => setSelectedDoctor(null)}
+        className="flex items-center gap-2 text-[13px] font-bold text-slate-500 hover:text-[#6C5CE7] transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" /> Back to Dashboard
+      </button>
+
+      <div className="bg-white rounded-[24px] p-8 border border-[#EEF2FF] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#6C5CE7] to-[#8B7CFF] text-white flex items-center justify-center shadow-md">
+              <Stethoscope className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-[24px] font-extrabold text-slate-800">{selectedDoctor.name}</h2>
+              <p className="text-[14px] text-[#6C5CE7] font-bold">{selectedDoctor.specialization} • {selectedDoctor.room}</p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="bg-[#FAFBFF] border border-[#EEF2FF] px-4 py-2.5 rounded-xl flex items-center gap-3">
+              <Users className="w-4 h-4 text-slate-400" />
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Waiting</p>
+                <p className="text-[15px] font-black text-slate-800 leading-tight">{docTokens.length}</p>
+              </div>
+            </div>
+            <div className="bg-[#FAFBFF] border border-[#EEF2FF] px-4 py-2.5 rounded-xl flex items-center gap-3">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Avg Wait</p>
+                <p className="text-[15px] font-black text-slate-800 leading-tight">{docTokens.length * 15}m</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {docTokens.length === 0 ? (
           <div className="h-64 flex flex-col items-center justify-center text-center opacity-70">
-            <Activity className="w-12 h-12 text-emerald-500 mb-4 opacity-50" />
-            <h3 className="text-[16px] font-bold text-slate-700">No Active Tokens</h3>
-            <p className="text-[13px] font-medium text-slate-400 mt-1">There are no approved appointments waiting in the queue.</p>
+            <Activity className="w-12 h-12 text-[#6C5CE7] mb-4 opacity-50" />
+            <h3 className="text-[16px] font-bold text-slate-700">Queue is Empty</h3>
+            <p className="text-[13px] font-medium text-slate-400 mt-1">There are no waiting patients for {selectedDoctor.name}.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -155,76 +217,84 @@ export default function TokenControlView({ showToast }) {
                 <tr className="border-b border-[#EEF2FF] bg-[#FAFBFF] text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   <th className="py-4 pl-6 rounded-tl-xl w-32">Token</th>
                   <th className="py-4">Patient</th>
-                  <th className="py-4">Doctor</th>
+                  <th className="py-4">Symptoms</th>
+                  <th className="py-4">AI Score</th>
+                  <th className="py-4">Severity</th>
                   <th className="py-4">Pos</th>
-                  <th className="py-4">Status</th>
                   <th className="py-4 pr-6 rounded-tr-xl text-right">Queue Actions</th>
                 </tr>
               </thead>
               <tbody className="text-[13px] font-bold text-slate-700">
-                {approvedTokens.map((appt) => (
-                  <motion.tr variants={itemVariants} key={appt.id} className="border-b border-[#EEF2FF] hover:bg-[#FAFBFF] transition-colors">
-                    <td className="py-5 pl-6">
-                      <div className="inline-flex items-center justify-center bg-gradient-to-br from-[#6C5CE7] to-[#8B7CFF] text-white px-4 py-1.5 rounded-xl text-[16px] font-black shadow-[0_4px_10px_rgba(108,92,231,0.2)]">
-                        {appt.token}
-                      </div>
-                    </td>
-                    <td className="py-5 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
-                    <td className="py-5">
-                      <p className="text-slate-800">{appt.doctorName}</p>
-                      <p className="text-[11px] text-[#6C5CE7] mt-0.5">{appt.room}</p>
-                    </td>
-                    <td className="py-5">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[12px] font-black text-slate-600">
-                        {appt.queuePosition}
-                      </div>
-                    </td>
-                    <td className="py-5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold text-emerald-600 bg-emerald-50 border border-emerald-100">
-                        {appt.status}
-                      </span>
-                    </td>
-                    <td className="py-5 pr-6 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button 
-                          onClick={() => handleCallNext(appt)}
-                          className="px-3 py-1.5 rounded-lg bg-[#6C5CE7] text-white text-[11px] hover:bg-[#5a4cdb] transition-colors flex items-center gap-1.5"
-                          title="Call on Display"
-                        >
-                          <Play className="w-3.5 h-3.5" /> Call
-                        </button>
-                        <button 
-                          onClick={() => handleSkip(appt)}
-                          className="p-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors border border-orange-100 hover:border-orange-500"
-                          title="Skip Token"
-                        >
-                          <SkipForward className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleMoveUp(appt)}
-                          className="p-1.5 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors border border-blue-100 hover:border-blue-500"
-                          title="Move Up"
-                        >
-                          <ArrowUpCircle className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleMoveDown(appt)}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-500 hover:text-white transition-colors border border-slate-200 hover:border-slate-500"
-                          title="Move Down"
-                        >
-                          <ArrowDownCircle className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleComplete(appt)}
-                          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors border border-emerald-100 hover:border-emerald-500 ml-2"
-                          title="Mark Completed"
-                        >
-                          <CheckSquare className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                {docTokens.map((appt) => {
+                  const style = getSeverityStyle(appt.severity || 'Low');
+                  const score = appt.priorityScore || 3.5;
+                  
+                  return (
+                    <motion.tr variants={itemVariants} initial="hidden" animate="visible" key={appt.id} className="border-b border-[#EEF2FF] hover:bg-[#FAFBFF] transition-colors">
+                      <td className="py-5 pl-6">
+                        <div className="inline-flex items-center justify-center bg-gradient-to-br from-[#6C5CE7] to-[#8B7CFF] text-white px-4 py-1.5 rounded-xl text-[16px] font-black shadow-[0_4px_10px_rgba(108,92,231,0.2)]">
+                          {appt.token}
+                        </div>
+                      </td>
+                      <td className="py-5 font-extrabold text-slate-800">{appt.patientName || 'Unknown Patient'}</td>
+                      <td className="py-5 text-slate-500 font-medium max-w-[200px] truncate" title={appt.symptoms}>
+                        {appt.symptoms}
+                      </td>
+                      <td className="py-5">
+                        <span className={`text-[13px] font-black ${style.text}`}>{score.toFixed(1)}</span>
+                      </td>
+                      <td className="py-5">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider font-bold border ${style.text} ${style.bg} ${style.border}`}>
+                          {appt.severity || 'Low'}
+                        </span>
+                      </td>
+                      <td className="py-5">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[12px] font-black text-slate-600">
+                          {appt.queuePosition}
+                        </div>
+                      </td>
+                      <td className="py-5 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button 
+                            onClick={() => handleCallNext(appt)}
+                            className="px-3 py-1.5 rounded-lg bg-[#6C5CE7] text-white text-[11px] hover:bg-[#5a4cdb] transition-colors flex items-center gap-1.5 shadow-sm"
+                            title="Call on Display"
+                          >
+                            <Play className="w-3.5 h-3.5" /> Call
+                          </button>
+                          <button 
+                            onClick={() => handleSkip(appt)}
+                            className="p-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors border border-orange-100 hover:border-orange-500"
+                            title="Skip Token"
+                          >
+                            <SkipForward className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleMoveUp(appt)}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors border border-blue-100 hover:border-blue-500"
+                            title="Move Up"
+                          >
+                            <ArrowUpCircle className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleMoveDown(appt)}
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-500 hover:text-white transition-colors border border-slate-200 hover:border-slate-500"
+                            title="Move Down"
+                          >
+                            <ArrowDownCircle className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleComplete(appt)}
+                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors border border-emerald-100 hover:border-emerald-500 ml-2"
+                            title="Mark Completed"
+                          >
+                            <CheckSquare className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
